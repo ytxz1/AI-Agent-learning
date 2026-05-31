@@ -1,0 +1,12 @@
+Python 快速入门指南
+
+Python 是一种高级、解释型、通用编程语言。
+由 Guido van Rossum 创建，1991 年首次发布。
+
+基础语法：
+1. 变量：name = "Python"
+2. 条件：if x > 0: print("正数")
+3. 循环：for i in range(10): print(i)
+4. 函数：def add(a, b): return a + b
+
+数据类型：int、float、str、list、dict、tuple、set

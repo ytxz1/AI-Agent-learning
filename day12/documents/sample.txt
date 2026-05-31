@@ -1,0 +1,20 @@
+Python 编程语言简介
+
+Python 是一种高级编程语言，由 Guido van Rossum 于 1991 年首次发布。
+Python 的设计哲学强调代码的可读性和简洁性。
+
+Python 的主要特点：
+1. 语法简洁明了，易于学习
+2. 丰富的标准库和第三方包
+3. 支持面向对象、函数式、过程式编程
+4. 跨平台兼容（Windows、macOS、Linux）
+5. 动态类型系统
+
+Python 的应用领域：
+- Web 开发：Django、Flask、FastAPI
+- 数据科学：Pandas、NumPy、Matplotlib
+- 人工智能：PyTorch、TensorFlow、Scikit-learn
+- 自动化脚本：系统管理、数据处理
+- 科学计算：SciPy、SymPy
+
+Python 的最新版本是 Python 3.12，带来了更好的错误消息和性能优化。

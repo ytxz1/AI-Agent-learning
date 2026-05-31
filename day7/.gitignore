@@ -1,0 +1,63 @@
+# ==============================
+# 环境变量文件（敏感信息）
+# ==============================
+.env
+.env.local
+.env.*.local
+
+# ==============================
+# Python 相关
+# ==============================
+# 编译的 Python 文件
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# 虚拟环境
+venv/
+env/
+.venv/
+.env/
+
+# 分发/打包
+dist/
+build/
+*.egg-info/
+*.egg
+
+# ==============================
+# IDE 相关
+# ==============================
+# VS Code
+.vscode/
+*.code-workspace
+
+# JetBrains (PyCharm)
+.idea/
+*.iml
+
+# ==============================
+# 操作系统相关
+# ==============================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+# ==============================
+# 日志和临时文件
+# ==============================
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo

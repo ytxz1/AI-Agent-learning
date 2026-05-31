@@ -1,0 +1,27 @@
+LangChain 框架简介
+
+LangChain 是一个用于构建 LLM（大语言模型）应用的开源框架。
+
+核心组件：
+1. Prompt Template - 提示词模板，用于构建发送给 LLM 的提示
+2. LLM / Chat Model - 大语言模型接口，支持 OpenAI、DeepSeek 等
+3. Output Parser - 输出解析器，将 LLM 输出转换为结构化数据
+4. Chain - 链，将多个组件串联起来形成处理流程
+5. Agent - 代理，让 LLM 自主决定使用哪些工具
+6. Memory - 记忆系统，保存对话历史
+7. Tool - 工具，扩展 LLM 的能力（搜索、计算等）
+8. Retriever - 检索器，从文档中检索相关信息
+
+RAG（检索增强生成）流程：
+1. 加载文档（Document Loader）
+2. 分割文本（Text Splitter）
+3. 生成向量嵌入（Embedding）
+4. 存储到向量数据库（Vector Store）
+5. 检索相关文档（Retriever）
+6. 将检索结果与问题一起发送给 LLM
+
+LangChain 的优势：
+- 模块化设计，组件可替换
+- 支持多种 LLM 提供商
+- 丰富的文档和社区支持
+- 持续更新和维护

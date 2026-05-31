@@ -1,0 +1,11 @@
+人工智能技术指南
+
+AI 的核心技术：
+1. 机器学习（ML）：从数据中学习模式
+2. 深度学习（DL）：多层神经网络
+3. 自然语言处理（NLP）：理解和生成语言
+4. 计算机视觉（CV）：分析图像和视频
+
+深度学习框架：PyTorch、TensorFlow、Keras
+NLP 工具：Transformers、spaCy、NLTK
+ML 工具：Scikit-learn、XGBoost、LightGBM
