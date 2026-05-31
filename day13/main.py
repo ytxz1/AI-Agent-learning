@@ -1,19 +1,15 @@
-"""
-Day 13 - 综合 AI 助手
+"""Day 13 程序入口。
 
-运行方式：python main.py
-
-整合 Day 8-12 所有知识：
-  Day 8: LLM + Prompt
-  Day 9: Memory 对话记忆
-  Day 10: Tools 工具系统
-  Day 11: Agent 智能代理
-  Day 12: RAG 文档问答
+这个文件只负责启动交互界面，不放业务逻辑。
+真正的聊天、工具调用、输出解析和模式切换逻辑，都在 `06_chat_interface.py` 里。
 """
 
-import os, sys
+from __future__ import annotations
+
+import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 if __name__ == "__main__":
-    # 运行 06_chat_interface.py
-    exec(open(os.path.join(os.path.dirname(__file__), "06_chat_interface.py")).read())
+    exec(open(os.path.join(os.path.dirname(__file__), "06_chat_interface.py"), encoding="utf-8").read())

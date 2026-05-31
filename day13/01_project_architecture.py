@@ -1,21 +1,19 @@
-"""
-Day 13 - 项目实战：综合 AI 助手架构
+"""Day 13 - 项目实战：综合 AI 助手架构说明。
 
-本文件展示项目的整体架构设计：
-1. 项目目标：构建一个综合 AI 助手
-2. 架构设计：模块化分层
-3. 各模块职责和关系
-4. 数据流向
-
-Day 8-12 知识回顾：
-  Day 8: 使用 LangChain 调用 LLM
-  Day 9: Memory 管理对话历史
-  Day 10: Tools 扩展 AI 能力
-  Day 11: Agents 自主决策
-  Day 12: RAG 基于文档问答
+这个文件用来帮助你理解整个 Day 13 项目是如何分层的：
+1. 配置层
+2. 工具层
+3. 记忆层
+4. 输出解析层
+5. Agent 层
+6. 界面层
 """
 
-import os, sys
+from __future__ import annotations
+
+import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from rich.console import Console
@@ -28,90 +26,69 @@ console.print("=" * 70, style="bold blue")
 console.print("Day 13 - 项目实战：综合 AI 助手", style="bold blue")
 console.print("=" * 70, style="bold blue")
 
-# ============================================================
-# 1. 项目架构
-# ============================================================
 console.print("\n[bold cyan]1. 项目架构图[/bold cyan]")
-console.print(Panel(
-    "┌──────────────────────────────────────┐\n"
-    "│         综合 AI 助手                   │\n"
-    "│                                      │\n"
-    "│  ┌──────────┐  ┌──────────┐        │\n"
-    "│  │  LLM 层   │  │  配置层   │        │\n"
-    "│  │ (ChatOpenAI)│  │ (config.py)│      │\n"
-    "│  └────┬─────┘  └──────────┘        │\n"
-    "│       │                             │\n"
-    "│  ┌────┴─────────────────────┐     │\n"
-    "│  │       模块层               │     │\n"
-    "│  │  ┌─────┐ ┌──────┐ ┌───┐ │     │\n"
-    "│  │  │Tools│ │Memory│ │RAG│ │     │\n"
-    "│  │  │工具  │ │记忆  │ │检索│ │     │\n"
-    "│  │  └─────┘ └──────┘ └───┘ │     │\n"
-    "│  └──────────┬──────────────┘     │\n"
-    "│             │                    │\n"
-    "│  ┌──────────┴──────────────┐     │\n"
-    "│  │      Agent 层            │     │\n"
-    "│  │  ReAct 推理 + 工具选择   │     │\n"
-    "│  └─────────────────────────┘     │\n"
-    "│             │                    │\n"
-    "│  ┌──────────┴──────────────┐     │\n"
-    "│  │      界面层 (main.py)    │     │\n"
-    "│  │  交互式命令行 + 功能菜单  │     │\n"
-    "│  └─────────────────────────┘     │\n"
-    "└──────────────────────────────────────┘",
-    title="项目架构",
-    style="green"
-))
+console.print(
+    Panel(
+        "┌──────────────────────────────┐\n"
+        "│         综合 AI 助手         │\n"
+        "└──────────────┬───────────────┘\n"
+        "               │\n"
+        "   ┌───────────┼───────────┐\n"
+        "   │           │           │\n"
+        "LLM 层      配置层       模块层\n"
+        "(ChatOpenAI) (config.py) (tools / memory / output parser)\n"
+        "               │           │\n"
+        "               └─────┬─────┘\n"
+        "                     │\n"
+        "                  Agent 层\n"
+        "           (ReAct 推理 + 模式切换)\n"
+        "                     │\n"
+        "                  界面层\n"
+        "          (交互式命令行菜单)",
+        title="项目架构",
+        style="green",
+    )
+)
 
-# ============================================================
-# 2. 各模块职责
-# ============================================================
 console.print("\n[bold cyan]2. 各模块职责[/bold cyan]")
-
 table = Table(title="模块清单", show_header=True)
 table.add_column("模块", style="cyan", width=15)
-table.add_column("文件", style="green", width=25)
+table.add_column("文件", style="green", width=30)
 table.add_column("职责", style="white", width=40)
-table.add_row("配置层", "config.py", "加载 API 密钥、基础配置")
-table.add_row("LLM 层", "各模块文件", "调用 DeepSeek/ChatOpenAI")
-table.add_row("Tools", "02_tools_module.py", "定义计算、天气、搜索等工具")
-table.add_row("Memory", "03_memory_module.py", "对话历史管理和裁剪")
-table.add_row("RAG", "04_rag_module.py", "文档加载、分割、检索")
-table.add_row("Agent", "05_agent_module.py", "ReAct 推理、工具选择")
-table.add_row("界面", "06_chat_interface.py", "交互式命令行菜单")
-table.add_row("入口", "main.py", "启动程序")
+table.add_row("配置层", "config.py", "加载 API Key、模型名和基础配置")
+table.add_row("工具层", "modules/tools.py", "计算、天气、时间、知识检索、单位转换")
+table.add_row("记忆层", "modules/memory.py", "保存对话历史和系统提示词")
+table.add_row("输出解析层", "modules/output_parser.py", "把自然语言整理成 JSON 等结构化结果")
+table.add_row("Agent", "05_agent_module.py", "整合模式切换、工具调用和推理逻辑")
+table.add_row("界面层", "06_chat_interface.py", "提供命令行菜单与交互")
+table.add_row("入口文件", "main.py", "启动整个项目")
 console.print(table)
 
-# ============================================================
-# 3. 知识回顾
-# ============================================================
-console.print("\n[bold cyan]3. 知识点映射[/bold cyan]")
-
-map_table = Table(title="Day 8-12 知识回顾", show_header=True)
+console.print("\n[bold cyan]3. Day 8-13 知识回顾[/bold cyan]")
+map_table = Table(title="知识映射", show_header=True)
 map_table.add_column("Day", style="cyan", width=8)
 map_table.add_column("主题", style="yellow", width=20)
 map_table.add_column("在本项目中的应用", style="white", width=40)
-map_table.add_row("Day 8", "LLM + Chain", "使用 ChatOpenAI 调用大模型")
-map_table.add_row("Day 9", "Memory", "管理对话历史、裁剪 Token")
-map_table.add_row("Day 10", "Tools", "定义和注册自定义工具")
-map_table.add_row("Day 11", "Agents", "ReAct 推理、工具选择")
-map_table.add_row("Day 12", "RAG", "文档加载、向量检索、增强生成")
+map_table.add_row("Day 8", "LLM + Chain", "使用 ChatOpenAI 作为核心模型")
+map_table.add_row("Day 9", "Memory", "保存对话历史并参与上下文构建")
+map_table.add_row("Day 10", "Tools", "定义并注册可调用工具")
+map_table.add_row("Day 11", "Agents", "根据问题决定调用哪种能力")
+map_table.add_row("Day 12", "输出解析", "把文本整理成结构化 JSON")
+map_table.add_row("Day 13", "综合实战", "把聊天、工具、记忆和输出解析整合到一起")
 console.print(map_table)
 
-# ============================================================
-# 4. 数据流向
-# ============================================================
 console.print("\n[bold cyan]4. 数据流向[/bold cyan]")
-console.print(Panel(
-    "用户输入 -> 主程序 -> 功能分发\n"
-    "    |\n"
-    "    +-> 普通对话 -> Memory + LLM -> 回答\n"
-    "    +-> 工具调用 -> Agent(ReAct) -> Tools -> LLM -> 回答\n"
-    "    +-> 文档问答 -> RAG(检索) -> LLM -> 回答\n"
-    "    +-> 代码助手 -> Agent -> 执行/分析 -> 回答",
-    title="数据流向",
-    style="cyan"
-))
+console.print(
+    Panel(
+        "用户输入 -> 主程序 -> 功能分发\n"
+        "    |\n"
+        "    +-> 普通对话 -> Memory + LLM -> 回复\n"
+        "    +-> 工具调用 -> Agent(ReAct) -> Tools -> LLM -> 回复\n"
+        "    +-> 输出解析 -> Output Parser -> JSON 结果\n"
+        "    +-> 历史查看 -> Memory -> 历史表格",
+        title="数据流向",
+        style="cyan",
+    )
+)
 
-console.print("\n[bold green]项目架构展示完成！[/bold green]")
-console.print("继续学习：python 02_tools_module.py")
+console.print("\n[bold green]项目架构说明完成，继续学习：python 02_tools_module.py[/bold green]")
