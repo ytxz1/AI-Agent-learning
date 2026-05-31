@@ -1,189 +1,107 @@
-"""
-Day 12 - 综合实践：交互式 RAG 文档问答助手
+"""Day 12 - Structured output demo entrypoint."""
 
-整合所有 RAG 知识，构建一个完整的文档问答系统。
-运行方式：python main.py
-"""
+import os
+import sys
 
-import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
-from langchain_community.document_loaders import TextLoader, DirectoryLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
-from config import OPENAI_API_KEY, OPENAI_BASE_URL, MODEL_NAME, EMBEDDING_MODEL
 from rich.console import Console
 from rich.panel import Panel
+from rich.prompt import Prompt
 from rich.table import Table
+
+from modules.demo_workflow import StructuredOutputWorkflow
+
 
 console = Console()
 
-console.print("=" * 60, style="bold blue")
-console.print("Day 12 - RAG 文档问答助手", style="bold blue")
-console.print("=" * 60, style="bold blue")
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-docs_dir = os.path.join(current_dir, "documents")
+class OutputParseApp:
+    def __init__(self):
+        self.workflow = StructuredOutputWorkflow()
+        self.running = True
 
-# ============================================================
-# 1. 初始化 RAG 系统
-# ============================================================
-console.print("\n[bold cyan]正在初始化 RAG 系统...[/bold cyan]")
+    def show_banner(self):
+        console.print(
+            Panel.fit(
+                "[bold]Day 12 - 输出解析[/bold]\n"
+                "命令：intent / extract / resume / demo / q\n"
+                "示例：\n"
+                "  intent 帮我查一下北京天气\n"
+                "  extract 这段文本请提取摘要和关键词\n"
+                "  resume 我叫张三，本科毕业，擅长 Python 和 AI 开发",
+                style="bold blue",
+            )
+        )
 
-# 加载文档
-dir_loader = DirectoryLoader(docs_dir, glob="*.txt", loader_cls=TextLoader,
-                              loader_kwargs={"encoding": "utf-8"})
-docs = dir_loader.load()
-console.print(f"  加载了 {len(docs)} 个文档", style="green")
-
-# 分割文档
-splitter = RecursiveCharacterTextSplitter(chunk_size=200, chunk_overlap=50)
-split_docs = splitter.split_documents(docs)
-console.print(f"  分割为 {len(split_docs)} 个文本块", style="green")
-
-try:
-    # 创建 Embedding
-    embeddings = OpenAIEmbeddings(
-        model=EMBEDDING_MODEL,
-        openai_api_key=OPENAI_API_KEY,
-        openai_api_base=OPENAI_BASE_URL,
-    )
-
-    # 创建向量数据库
-    persist_dir = os.path.join(current_dir, "chroma_db")
-    if os.path.exists(persist_dir):
-        vectorstore = Chroma(persist_directory=persist_dir, embedding_function=embeddings)
-        console.print("  已加载现有向量数据库", style="green")
-    else:
-        vectorstore = Chroma.from_documents(split_docs, embeddings, persist_directory=persist_dir)
-        console.print("  已创建新的向量数据库", style="green")
-
-    # 创建检索器
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-
-    # 创建 LLM
-    llm = ChatOpenAI(
-        api_key=OPENAI_API_KEY,
-        base_url=OPENAI_BASE_URL,
-        model=MODEL_NAME,
-        temperature=0.7,
-    )
-
-    # RAG 提示词
-    rag_prompt = ChatPromptTemplate.from_template(
-        "你是一个基于文档的问答助手。请根据以下检索到的上下文来回答问题。\n"
-        "如果上下文中没有相关信息，请说明你不确定。回答要简洁准确。\n\n"
-        "上下文：\n{context}\n\n"
-        "问题：{question}\n\n"
-        "回答："
-    )
-
-    def format_docs(docs):
-        return "\n\n".join(doc.page_content for doc in docs)
-
-    # RAG Chain
-    rag_chain = (
-        {"context": retriever | format_docs, "question": RunnablePassthrough()}
-        | rag_prompt
-        | llm
-        | StrOutputParser()
-    )
-
-    console.print("  RAG 系统初始化完成！", style="bold green")
-
-    # ============================================================
-    # 2. 交互式问答
-    # ============================================================
-    def show_menu():
-        table = Table(title="Day 12 - RAG 文档问答助手", show_header=True)
-        table.add_column("命令", style="green", width=12)
-        table.add_column("说明", style="white")
-        table.add_row("直接输入", "基于文档提问")
-        table.add_row("search", "只检索文档（不调用 LLM）")
-        table.add_row("docs", "查看已加载的文档")
-        table.add_row("example", "查看示例问题")
+    def show_menu(self):
+        table = Table(title="命令菜单", show_header=True, header_style="bold magenta")
+        table.add_column("命令", width=12)
+        table.add_column("说明", width=50)
+        table.add_row("intent", "进行意图分类输出")
+        table.add_row("extract", "进行结构化信息抽取")
+        table.add_row("resume", "进行简历信息抽取")
+        table.add_row("demo", "运行内置演示样例")
         table.add_row("q", "退出程序")
         console.print(table)
 
-    def show_examples():
+    def _render_result(self, result: dict):
+        if result["ok"]:
+            console.print("[bold green]解析成功[/bold green]")
+            console.print(f"schema: {result['schema']}")
+            console.print(f"attempts: {result['attempts']}")
+            console.print(f"raw_output: {result['raw_output']}")
+            console.print(f"parsed: {result['parsed']}")
+        else:
+            console.print("[bold red]解析失败[/bold red]")
+            console.print(f"schema: {result['schema']}")
+            console.print(f"attempts: {result['attempts']}")
+            console.print(f"raw_output: {result['raw_output']}")
+            console.print(f"errors: {result['validation_errors']}")
+
+    def run_demo(self):
         examples = [
-            "Python 有什么特点？",
-            "LangChain 有哪些核心组件？",
-            "AI 的发展历史是怎样的？",
-            "RAG 的流程是什么？",
-            "Transformer 是什么？",
+            ("intent", "帮我查一下北京天气"),
+            ("extract", "这段文本请提取摘要和关键词，内容是 Python 是一门非常适合 AI 开发的语言。"),
+            ("resume", "我叫张三，本科毕业于某大学，擅长 Python 和 AI 开发。"),
         ]
-        console.print("\n[bold cyan]示例问题：[/bold cyan]")
-        for i, ex in enumerate(examples, 1):
-            console.print(f"  {i}. {ex}", style="yellow")
+        for task, text in examples:
+            console.print(f"\n[bold cyan]{task}[/bold cyan] -> {text}")
+            result = self.workflow.run(task, text)
+            self._render_result(result)
 
-    def search_only(query):
-        """只检索文档，不调用 LLM"""
-        results = retriever.invoke(query)
-        console.print(f"\n检索到 {len(results)} 个相关文档：", style="green")
-        for i, doc in enumerate(results):
-            source = os.path.basename(doc.metadata.get("source", "unknown"))
-            console.print(f"  [{i+1}] ({source})", style="cyan")
-            console.print(f"      {doc.page_content[:150]}...", style="white")
+    def run(self):
+        self.show_banner()
+        self.show_menu()
 
-    def show_docs():
-        """显示已加载的文档"""
-        console.print("\n[bold cyan]已加载的文档：[/bold cyan]")
-        for doc in docs:
-            source = os.path.basename(doc.metadata.get("source", "unknown"))
-            chars = len(doc.page_content)
-            console.print(f"  - {source}（{chars} 字符）", style="green")
+        while self.running:
+            try:
+                user_input = Prompt.ask("\n你")
+            except (EOFError, KeyboardInterrupt):
+                console.print("\n再见！", style="bold red")
+                break
 
-    console.print(Panel.fit(
-        "Day 12 - RAG 文档问答助手\n"
-        "基于文档进行智能问答，输入 example 查看示例",
-        style="bold green"
-    ))
-    show_menu()
+            if not user_input:
+                continue
 
-    while True:
-        try:
-            user_input = input("\n你：").strip()
-        except (EOFError, KeyboardInterrupt):
-            console.print("\n再见！", style="bold red")
-            break
+            command = user_input.strip().lower()
+            if command == "q":
+                console.print("再见！", style="bold red")
+                break
+            if command == "demo":
+                self.run_demo()
+                continue
 
-        if not user_input:
-            continue
+            parts = user_input.split(" ", 1)
+            if len(parts) == 1:
+                console.print("请输入命令加文本，例如：intent 帮我查一下北京天气", style="yellow")
+                continue
 
-        cmd = user_input.lower()
-        if cmd == "q":
-            console.print("\n再见！", style="bold red")
-            break
-        elif cmd == "search":
-            q = input("  搜索词：").strip()
-            if q:
-                search_only(q)
-            continue
-        elif cmd == "docs":
-            show_docs()
-            continue
-        elif cmd == "example":
-            show_examples()
-            continue
+            task, text = parts[0], parts[1]
+            result = self.workflow.run(task, text)
+            self._render_result(result)
 
-        # RAG 问答
-        console.print("\n  [检索相关文档...]", style="dim")
-        retrieved = retriever.invoke(user_input)
-        for i, doc in enumerate(retrieved[:2]):
-            source = os.path.basename(doc.metadata.get("source", "unknown"))
-            console.print(f"  [{i+1}] ({source}) {doc.page_content[:60]}...", style="dim")
 
-        console.print("  [生成回答...]", style="dim")
-        with console.status("[bold green]思考中..."):
-            answer = rag_chain.invoke(user_input)
-        console.print(f"\n助手：{answer}", style="bold green")
+if __name__ == "__main__":
+    OutputParseApp().run()
 
-except Exception as e:
-    console.print(f"\n初始化失败：{e}", style="red")
-    import traceback
-    traceback.print_exc()
