@@ -1,7 +1,7 @@
 """用于演示结构化输出的模拟模型。
 
-这个模块不依赖真实 API，主要目的是让 Day 12 的流程可以直接运行。
-它会故意输出一些“带噪声”的结果，方便你观察解析和修复流程。
+这个模块不依赖真实 API，目的是让 Day 12 的完整流程可以离线运行。
+它会故意输出一些“带噪声”的结果，用来演示解析和修复流程。
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Dict, List
 
 
-# 允许单独运行这个文件时，也能找到项目根目录里的模块。
+# 允许这个文件单独运行时，也能找到项目根目录。
 CURRENT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = CURRENT_DIR.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -27,11 +27,11 @@ class MockStructuredModel:
     """模拟一个会输出 JSON 的模型。"""
 
     def __init__(self, seed: int = 42):
-        # 固定随机种子，保证每次演示更容易复现。
+        # 固定随机种子，方便结果复现。
         self.random = random.Random(seed)
 
     def _extract_keywords(self, text: str, limit: int = 4) -> List[str]:
-        """从文本中抽取关键词。"""
+        """从文本里抽几个关键词。"""
         tokens = re.findall(r"[A-Za-z0-9\u4e00-\u9fff]+", text)
         keywords: List[str] = []
 
@@ -114,10 +114,10 @@ class MockStructuredModel:
 
 
 if __name__ == "__main__":
-    # 直接运行这个文件时，做一个最小演示。
-    demo_model = MockStructuredModel()
+    # 直接运行这个文件时，给一个最小演示，方便检查输出。
     from schemas.output_schema import build_extraction_schema
 
-    sample_schema = build_extraction_schema()
-    sample_prompt = "请提取摘要和关键词：Python 是一门非常适合 AI 开发的语言。"
-    print(demo_model.generate(sample_prompt, sample_schema))
+    model = MockStructuredModel()
+    schema = build_extraction_schema()
+    text = "请提取摘要和关键词：Python 是一门非常适合 AI 开发的语言。"
+    print(model.generate(text, schema))

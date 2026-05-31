@@ -8,7 +8,10 @@ from typing import Any, List
 
 @dataclass
 class SchemaField:
-    """表示一个输出字段。"""
+    """表示一个输出字段。
+
+    例如：intent、confidence、keywords 这些都可以定义成字段。
+    """
 
     name: str
     field_type: str
@@ -30,7 +33,10 @@ class OutputSchema:
         return [item.name for item in self.fields]
 
     def to_prompt_block(self) -> str:
-        """把 schema 转成提示词文本，传给模型。"""
+        """把 schema 转成提示词文本，传给模型。
+
+        这样模型就能知道自己需要输出什么字段、每个字段是什么类型。
+        """
         lines = [
             f"Schema 名称：{self.name}",
             f"Schema 说明：{self.description}",

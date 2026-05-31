@@ -13,13 +13,12 @@
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 from typing import Dict
 
 
-# 允许这个文件被“单独运行”时也能找到项目根目录。
+# 允许这个文件被“单独运行”时，也能找到项目根目录里的包。
 CURRENT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = CURRENT_DIR.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -34,7 +33,6 @@ from schemas.output_schema import (
     build_resume_schema,
 )
 from tools.response_validator import validate_payload
-
 from modules.mock_model import MockStructuredModel
 
 
@@ -48,7 +46,7 @@ class StructuredOutputWorkflow:
         self.parser = JsonOutputParser()
 
     def _pick_schema(self, task: str) -> OutputSchema:
-        """根据任务类型选择对应的 schema。"""
+        """根据任务类型选择对应 schema。"""
         task = task.lower().strip()
         if task in {"intent", "classify", "classification"}:
             return build_intent_schema()
@@ -59,6 +57,8 @@ class StructuredOutputWorkflow:
     def run(self, task: str, text: str, strict: bool = False) -> Dict:
         """运行完整的结构化输出流程。"""
         schema = self._pick_schema(task)
+
+        # 第一步：构建提示词。提示词里要写清楚输出格式。
         prompt = self._build_prompt(schema, text, strict=strict)
 
         last_error = ""
@@ -66,20 +66,23 @@ class StructuredOutputWorkflow:
         parsed = None
         validation = None
 
+        # 这个循环表示：如果解析或校验失败，就重新试一次。
         for attempt in range(self.max_retry + 1):
             # 1. 让模型生成输出
             raw_output = self.model.generate(prompt, schema, strict=(strict or attempt > 0))
 
-            # 2. 尝试解析 JSON
+            # 2. 尝试把输出解析成 JSON
             parse_result = self.parser.parse(raw_output)
             if not parse_result.ok:
                 last_error = parse_result.error
+
+                # 解析失败时，重新构造更严格的提示词再试。
                 prompt = self._build_retry_prompt(schema, text, parse_result.error)
                 continue
 
             parsed = parse_result.data or {}
 
-            # 3. 校验字段是否符合 schema
+            # 3. JSON 解析成功后，再检查字段和类型是否符合 schema。
             validation = validate_payload(schema, parsed)
             if validation.ok:
                 return {
@@ -92,10 +95,11 @@ class StructuredOutputWorkflow:
                     "attempts": attempt + 1,
                 }
 
-            # 4. 字段不合格就继续重试
+            # 4. 如果字段不合格，就把错误记录下来，再重试一次。
             last_error = "; ".join(validation.errors)
             prompt = self._build_retry_prompt(schema, text, last_error)
 
+        # 所有重试都失败后，返回失败结果，方便上层界面展示。
         return {
             "ok": False,
             "schema": schema.name,
@@ -124,4 +128,3 @@ class StructuredOutputWorkflow:
             f"{schema.to_prompt_block()}\n\n"
             f"输入文本：\n{text}\n"
         )
-

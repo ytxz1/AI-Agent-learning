@@ -1,9 +1,16 @@
-"""练习 5：完整演示。"""
+"""练习 5：完整演示。
+
+这个脚本把 Day 12 的三个核心任务都跑一遍：
+- 意图识别
+- 信息抽取
+- 简历抽取
+"""
 
 from modules.demo_workflow import StructuredOutputWorkflow
 
 
 if __name__ == "__main__":
+    # 准备一组测试样例，依次观察三种 schema 的效果。
     workflow = StructuredOutputWorkflow()
     tests = [
         ("intent", "帮我翻译这段话"),

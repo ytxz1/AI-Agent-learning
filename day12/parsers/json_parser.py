@@ -22,7 +22,10 @@ class JsonOutputParser:
     """负责从模型输出中提取并解析 JSON。"""
 
     def extract_json_block(self, text: str) -> str:
-        """尝试从文本中截取最外层 JSON 对象。"""
+        """尝试从文本中截取最外层 JSON 对象。
+
+        很多模型会在 JSON 外面额外补一句解释，这里会尽量把 JSON 主体截出来。
+        """
         start = text.find("{")
         end = text.rfind("}")
         if start == -1 or end == -1 or end <= start:
@@ -30,7 +33,13 @@ class JsonOutputParser:
         return text[start : end + 1]
 
     def try_repair(self, text: str) -> str:
-        """对常见的格式问题做轻量修复。"""
+        """对常见的格式问题做轻量修复。
+
+        这里只做最常见的修复：
+        - 去掉 ```json 代码块
+        - 去掉多余逗号
+        - 去掉外层多余引号
+        """
         repaired = text.strip()
         repaired = repaired.replace("```json", "").replace("```", "").strip()
         repaired = self.extract_json_block(repaired)
@@ -42,7 +51,10 @@ class JsonOutputParser:
         return repaired.strip()
 
     def parse(self, text: str) -> ParseResult:
-        """依次尝试原文、截取版、修复版。"""
+        """依次尝试原文、截取版、修复版。
+
+        只要其中一种方式解析成功，就返回成功结果。
+        """
         candidates = [text, self.extract_json_block(text), self.try_repair(text)]
         last_error = ""
 
@@ -53,6 +65,7 @@ class JsonOutputParser:
                     return ParseResult(ok=True, data=data, raw=text)
                 last_error = "解析后的结果不是 JSON 对象。"
             except Exception as exc:
+                # 记录最后一次错误，方便调试。
                 last_error = str(exc)
 
         return ParseResult(ok=False, error=last_error, raw=text)

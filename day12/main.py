@@ -1,8 +1,16 @@
-"""Day 12 - 结构化输出演示入口。"""
+"""Day 12 - 结构化输出演示程序。
+
+这个入口文件负责：
+1. 启动命令行界面
+2. 接收用户输入
+3. 调用结构化输出工作流
+4. 把结果更清晰地打印出来
+"""
 
 import os
 import sys
 
+# 允许直接运行这个文件时，仍然能导入同目录下的 modules、schemas 等包。
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from rich.console import Console
@@ -17,14 +25,15 @@ console = Console()
 
 
 class OutputParseApp:
-    """Day 12 的命令行演示程序。"""
+    """Day 12 的命令行演示应用。"""
 
     def __init__(self):
+        # 这里初始化工作流对象，后面所有命令都会调用它。
         self.workflow = StructuredOutputWorkflow()
         self.running = True
 
     def show_banner(self):
-        """显示欢迎信息。"""
+        """显示欢迎横幅。"""
         console.print(
             Panel.fit(
                 "[bold]Day 12 - 输出解析[/bold]\n"
@@ -38,7 +47,7 @@ class OutputParseApp:
         )
 
     def show_menu(self):
-        """显示命令菜单。"""
+        """把可用命令整理成表格，方便查看。"""
         table = Table(title="命令菜单", show_header=True, header_style="bold magenta")
         table.add_column("命令", width=12)
         table.add_column("说明", width=50)
@@ -50,7 +59,7 @@ class OutputParseApp:
         console.print(table)
 
     def _render_result(self, result: dict):
-        """把运行结果转成中文展示。"""
+        """把工作流返回的字典格式结果，转成更好读的中文输出。"""
         if result["ok"]:
             console.print("[bold green]解析成功[/bold green]")
             console.print(f"模式：{result['schema']}")
@@ -65,7 +74,7 @@ class OutputParseApp:
             console.print(f"错误信息：{result['validation_errors']}")
 
     def run_demo(self):
-        """运行内置演示。"""
+        """运行几组预设示例，方便一次性观察完整流程。"""
         examples = [
             ("intent", "帮我查一下北京天气"),
             ("extract", "这段文本请提取摘要和关键词，内容是 Python 是一门非常适合 AI 开发的语言。"),
@@ -78,7 +87,7 @@ class OutputParseApp:
             self._render_result(result)
 
     def run(self):
-        """主循环，负责接收用户输入。"""
+        """主循环：持续接收用户输入，直到用户退出。"""
         self.show_banner()
         self.show_menu()
 
@@ -100,6 +109,7 @@ class OutputParseApp:
                 self.run_demo()
                 continue
 
+            # 用户输入格式：命令 + 空格 + 文本
             parts = user_input.split(" ", 1)
             if len(parts) == 1:
                 console.print("请输入命令加文本，例如：intent 帮我查一下北京天气", style="yellow")

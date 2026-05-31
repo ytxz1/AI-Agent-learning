@@ -32,7 +32,10 @@ def _type_matches(value: Any, field_type: str) -> bool:
 
 
 def validate_payload(schema: OutputSchema, payload: Dict[str, Any]) -> ValidationResult:
-    """根据 schema 校验模型输出。"""
+    """根据 schema 校验模型输出。
+
+    解析成功不代表内容一定对，所以这里再做一层字段和类型检查。
+    """
     errors: List[str] = []
 
     for field in schema.fields:
