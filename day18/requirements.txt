@@ -1,0 +1,4 @@
+rich
+python-dotenv
+langchain-openai
+langchain-core

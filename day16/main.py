@@ -1,5 +1,7 @@
 """Day 16 - 向量数据库演示入口。"""
 
+from __future__ import annotations
+
 import os
 import sys
 from pathlib import Path
@@ -33,14 +35,7 @@ class VectorDBApp:
         self.running = True
 
     def build_index(self):
-        """重新构建索引。
-
-        这个步骤会：
-        1. 重新加载文档
-        2. 重新切块
-        3. 重新转向量
-        4. 重新写入向量库
-        """
+        """重新构建索引。"""
         documents = load_documents(str(self.docs_dir))
         chunks = split_documents(documents, chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
         self.vector_store.records = []
@@ -48,7 +43,7 @@ class VectorDBApp:
         return len(documents), len(chunks)
 
     def show_banner(self):
-        """欢迎横幅。"""
+        """显示欢迎横幅。"""
         console.print(
             Panel.fit(
                 "[bold]Day 16 - 向量数据库[/bold]\n"
@@ -60,9 +55,10 @@ class VectorDBApp:
                 style="bold green",
             )
         )
+        console.print(f"[dim]Embedding 模式：{getattr(self.embedding_model, 'mode', '未知')}[/dim]")
 
     def show_menu(self):
-        """命令菜单。"""
+        """显示命令菜单。"""
         table = Table(title="命令菜单", show_header=True, header_style="bold magenta")
         table.add_column("命令", width=16)
         table.add_column("说明", width=60)
@@ -82,13 +78,14 @@ class VectorDBApp:
         console.print(f"记录数量：{stats['record_count']}")
         console.print(f"保存路径：{stats['db_path']}")
         console.print(f"来源分布：{stats['source_counts']}")
+        console.print(f"Embedding 模式：{getattr(self.embedding_model, 'mode', '未知')}")
 
     def run_demo(self):
-        """跑几个示例问题。"""
+        """运行几条示例问题。"""
         examples = [
             "什么是 RAG？",
             "向量数据库有什么作用？",
-            "AI Agent 为什么要结合向量检索？",
+            "AI Agent 为什么要结合检索？",
         ]
         for question in examples:
             console.print(f"\n[bold cyan]问题：{question}[/bold cyan]")
@@ -96,12 +93,7 @@ class VectorDBApp:
             console.print(self.search_demo.format_results(results))
 
     def parse_search_command(self, command: str):
-        """解析 search 命令里的简单过滤条件。
-
-        支持格式：
-        - search 你的问题
-        - search:source=rag_notes.txt 你的问题
-        """
+        """解析 search 命令中的简单过滤条件。"""
         metadata_filter = None
         question = command
 
@@ -122,7 +114,6 @@ class VectorDBApp:
         self.show_banner()
         self.show_menu()
 
-        # 启动时先尝试加载磁盘上的向量库。
         self.vector_store.load()
         if not self.vector_store.records:
             count_docs, count_chunks = self.build_index()
