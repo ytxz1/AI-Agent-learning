@@ -1,9 +1,29 @@
-"""Structured output workflow used by the Day 12 demo."""
+"""Day 12 结构化输出工作流。
+
+这个文件把整条流程串起来：
+1. 选择 schema
+2. 生成提示词
+3. 调用模拟模型
+4. 解析 JSON
+5. 校验字段
+6. 失败后重试
+
+它既可以被 `main.py` 调用，也可以单独执行调试。
+"""
 
 from __future__ import annotations
 
-from dataclasses import asdict
-from typing import Dict, Optional
+import os
+import sys
+from pathlib import Path
+from typing import Dict
+
+
+# 允许这个文件被“单独运行”时也能找到项目根目录。
+CURRENT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = CURRENT_DIR.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from config import MAX_RETRY
 from parsers.json_parser import JsonOutputParser
@@ -14,16 +34,21 @@ from schemas.output_schema import (
     build_resume_schema,
 )
 from tools.response_validator import validate_payload
-from .mock_model import MockStructuredModel
+
+from modules.mock_model import MockStructuredModel
 
 
 class StructuredOutputWorkflow:
+    """结构化输出工作流主类。"""
+
     def __init__(self, max_retry: int = MAX_RETRY):
+        # max_retry 表示：解析失败或校验失败后，最多再尝试几次。
         self.max_retry = max_retry
         self.model = MockStructuredModel()
         self.parser = JsonOutputParser()
 
     def _pick_schema(self, task: str) -> OutputSchema:
+        """根据任务类型选择对应的 schema。"""
         task = task.lower().strip()
         if task in {"intent", "classify", "classification"}:
             return build_intent_schema()
@@ -32,6 +57,7 @@ class StructuredOutputWorkflow:
         return build_extraction_schema()
 
     def run(self, task: str, text: str, strict: bool = False) -> Dict:
+        """运行完整的结构化输出流程。"""
         schema = self._pick_schema(task)
         prompt = self._build_prompt(schema, text, strict=strict)
 
@@ -41,7 +67,10 @@ class StructuredOutputWorkflow:
         validation = None
 
         for attempt in range(self.max_retry + 1):
+            # 1. 让模型生成输出
             raw_output = self.model.generate(prompt, schema, strict=(strict or attempt > 0))
+
+            # 2. 尝试解析 JSON
             parse_result = self.parser.parse(raw_output)
             if not parse_result.ok:
                 last_error = parse_result.error
@@ -49,6 +78,8 @@ class StructuredOutputWorkflow:
                 continue
 
             parsed = parse_result.data or {}
+
+            # 3. 校验字段是否符合 schema
             validation = validate_payload(schema, parsed)
             if validation.ok:
                 return {
@@ -61,6 +92,7 @@ class StructuredOutputWorkflow:
                     "attempts": attempt + 1,
                 }
 
+            # 4. 字段不合格就继续重试
             last_error = "; ".join(validation.errors)
             prompt = self._build_retry_prompt(schema, text, last_error)
 
@@ -75,19 +107,21 @@ class StructuredOutputWorkflow:
         }
 
     def _build_prompt(self, schema: OutputSchema, text: str, strict: bool = False) -> str:
-        strict_line = "Return ONLY valid JSON." if strict else "Return JSON output."
+        """构建首次提示词。"""
+        strict_line = "请只输出合法 JSON。" if strict else "请输出 JSON。"
         return (
-            f"You are a structured output assistant.\n"
+            f"你是一个结构化输出助手。\n"
             f"{strict_line}\n\n"
             f"{schema.to_prompt_block()}\n\n"
-            f"Input text:\n{text}\n"
+            f"输入文本：\n{text}\n"
         )
 
     def _build_retry_prompt(self, schema: OutputSchema, text: str, error: str) -> str:
+        """构建重试提示词，把上一次的错误告诉模型。"""
         return (
-            f"The previous output had issues: {error}.\n"
-            f"Please return ONLY JSON that matches the schema exactly.\n\n"
+            f"上一次输出有问题：{error}。\n"
+            f"请严格返回和 schema 完全匹配的 JSON，不要加额外解释。\n\n"
             f"{schema.to_prompt_block()}\n\n"
-            f"Input text:\n{text}\n"
+            f"输入文本：\n{text}\n"
         )
 
