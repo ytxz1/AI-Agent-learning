@@ -20,7 +20,9 @@ CURRENT_DIR = Path(__file__).parent
 ENV_PATH = CURRENT_DIR / ".env"
 EXAMPLE_ENV_PATH = CURRENT_DIR / ".env.example"
 
-# 优先读取真正的 .env；如果没有，再允许用 .env.example 兜底。
+# 优先读取真正的 .env。
+# 如果 .env 不存在，再读取 .env.example 作为兜底示例配置。
+# override=False 表示：真实 .env 中已经存在的值不会被 .env.example 覆盖。
 load_dotenv(ENV_PATH)
 if EXAMPLE_ENV_PATH.exists():
     load_dotenv(EXAMPLE_ENV_PATH, override=False)
@@ -41,8 +43,8 @@ VECTOR_DB_FILE = os.getenv("VECTOR_DB_FILE", str(CURRENT_DIR / "vector_db.json")
 # 本地 embedding 的维度。
 EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "128"))
 
-# 在线 Embedding 配置（可选）
+# 在线 Embedding 配置。
+# 如果 OPENAI_API_KEY 为空，程序会自动使用本地 SimpleEmbeddingModel。
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.deepseek.com")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-v3")
-

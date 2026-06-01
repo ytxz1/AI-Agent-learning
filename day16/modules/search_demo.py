@@ -11,11 +11,16 @@ class SearchDemo:
     """把检索过程包装成更容易看的演示格式。"""
 
     def __init__(self, vector_store, top_k: int = TOP_K):
+        # vector_store 负责真正的向量搜索。
         self.vector_store = vector_store
+
+        # top_k 表示默认返回前几条结果。
         self.top_k = top_k
 
     def search(self, question: str, metadata_filter: Optional[dict] = None):
         """执行一次检索。"""
+        # metadata_filter 是可选过滤条件。
+        # 例如 {"source": "rag_notes.txt"} 表示只查这个来源文件。
         return self.vector_store.similarity_search(
             question,
             k=self.top_k,
@@ -29,6 +34,7 @@ class SearchDemo:
 
         lines = []
         for idx, item in enumerate(results, 1):
+            # source 和 chunk_index 都来自文档 metadata。
             source = item.document.metadata.get("source", "unknown")
             chunk_index = item.document.metadata.get("chunk_index", "-")
             lines.append(
@@ -36,4 +42,3 @@ class SearchDemo:
                 f"{item.document.page_content}"
             )
         return "\n\n".join(lines)
-

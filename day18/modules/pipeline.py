@@ -13,13 +13,18 @@ class RAGPipeline:
     """把文档加载、切分、检索链组装在一起。"""
 
     def __init__(self, base_dir: str | Path, docs_dir: str, chunk_size: int = 320, chunk_overlap: int = 70, top_k: int = 3, max_context_chars: int = 1600):
+        # base_dir 是 day18 根目录。
         self.base_dir = Path(base_dir)
         self.docs_dir_name = docs_dir
+        # docs_dir 是解析后的绝对路径。
         self.docs_dir = resolve_docs_dir(self.base_dir, docs_dir)
+        # 文档切分参数。
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
+        # 检索和上下文参数。
         self.top_k = top_k
         self.max_context_chars = max_context_chars
+        # 保存中间状态。
         self.documents = []
         self.chunks = []
         self.chain: RAGChain | None = None
@@ -34,11 +39,13 @@ class RAGPipeline:
         if not self.documents:
             self.load()
         self.chunks = split_documents(self.documents, chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap)
+        # 切分完成后，基于 chunks 初始化 RAGChain。
         self.chain = RAGChain(self.chunks, top_k=self.top_k, max_context_chars=self.max_context_chars)
         return self.chunks
 
     def ensure_ready(self):
         """确保管线已准备好。"""
+        # ask 之前必须保证 documents、chunks、chain 都已经准备好。
         if not self.documents:
             self.load()
         if not self.chunks:
@@ -63,4 +70,3 @@ class RAGPipeline:
         self.ensure_ready()
         assert self.chain is not None
         return self.chain.query(question)
-

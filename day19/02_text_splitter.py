@@ -1,5 +1,5 @@
 """
-Day 12 - 文本分割器：将长文档切分成小块
+Day 19 - 项目 2：RAG 问答系统 - 文本分割器
 
 本示例演示文本分割的核心概念和方法：
 1. 为什么要分割文本
@@ -27,7 +27,7 @@ from rich.panel import Panel
 console = Console()
 
 console.print("=" * 60, style="bold blue")
-console.print("Day 12 - 文本分割器", style="bold blue")
+console.print("Day 19 - 文本分割器", style="bold blue")
 console.print("=" * 60, style="bold blue")
 
 # ============================================================

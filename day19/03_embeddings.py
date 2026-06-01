@@ -1,5 +1,5 @@
 """
-Day 12 - 向量嵌入：将文本转换为数字向量
+Day 19 - 项目 2：RAG 问答系统 - 向量嵌入
 
 本示例演示 Embedding 的核心概念：
 1. 什么是向量嵌入
@@ -24,7 +24,7 @@ from rich.table import Table
 console = Console()
 
 console.print("=" * 60, style="bold blue")
-console.print("Day 12 - 向量嵌入", style="bold blue")
+console.print("Day 19 - 向量嵌入", style="bold blue")
 console.print("=" * 60, style="bold blue")
 
 # ============================================================

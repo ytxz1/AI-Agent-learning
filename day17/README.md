@@ -1,588 +1,1153 @@
 # Day 17 - 文档加载与切分
 
-> 目标：学会把本地文档加载成程序可以处理的 `Document` 对象，并掌握常见的切分方式，为后面的向量数据库和 RAG 铺路。  
-> 这一节是“数据准备阶段”的核心，重点不是回答问题，而是把原始资料整理好。
+> Day 17 的任务：掌握 RAG 项目里的数据准备阶段。
+>
+> 这一节不做问答，也不做向量检索，而是专门解决一个非常基础但非常关键的问题：
+>
+> ```text
+> 原始文件如何进入程序？
+> 长文档如何切成适合后续 Embedding 和检索的小块？
+> ```
 
 ---
 
-## 1. Day 17 的定位
+## 1. 今天你要学会什么
 
-Day 17 位于课程中“数据处理基础”的位置。
+Day 17 对应学习计划表里的任务是：`文档加载与切分`。
 
-前面的 Day 15、Day 16 已经让你了解了：
+完成这一天后，你应该能理解：
 
-- 什么是 RAG
-- 什么是向量数据库
-- 为什么需要检索
-
-而 Day 17 进一步回答一个更基础的问题：
-
-**这些文档是怎么进入系统的？进入系统之后又是怎么被切成小块的？**
-
-如果这一步做不好，后面的检索效果就会变差。
-
----
-
-## 2. 本日学习目标
-
-完成 Day 17 后，你应该能够：
-
-1. 解释什么是文档加载。
-2. 解释什么是文档切分。
-3. 区分 `TextLoader`、`DirectoryLoader`、递归切分器、字符切分器、Markdown 标题切分器。
-4. 理解 `chunk_size` 和 `chunk_overlap` 的作用。
-5. 知道为什么切分策略会影响后续检索质量。
-6. 独立搭建一个“加载 -> 切分 -> 统计 -> 预览”的文档处理管线。
+1. 什么是文档加载。
+2. 什么是 LangChain 的 `Document` 对象。
+3. `page_content` 和 `metadata` 分别保存什么。
+4. 为什么长文档不能直接进入后续 RAG 流程。
+5. 什么是 `chunk_size`。
+6. 什么是 `chunk_overlap`。
+7. 递归切分器和字符切分器有什么区别。
+8. Markdown 标题切分适合什么场景。
+9. metadata 为什么要跟着 chunk 保留下来。
+10. 如何搭建一个完整的“加载 -> 预览 -> 切分 -> 统计”管线。
 
 ---
 
-## 3. 项目整体说明
-
-这个 Day 17 项目是一个轻量级的“文档处理管线”。
-
-它不负责生成答案，也不负责向量检索。
-
-它只做一件事：
-
-**把文件读进来，再把文件切成更合适的小块。**
-
-项目里包含：
-
-- 文档加载模块
-- 文档切分模块
-- 统一的配置文件
-- 一个完整的命令行入口
-- 5 个练习脚本
-
----
-
-## 4. 目录结构总览
+## 2. 项目结构
 
 ```text
 day17/
 ├── README.md
-├── main.py
-├── config.py
 ├── requirements.txt
 ├── .env.example
-├── documents/
-│   ├── 01_python_intro.txt
-│   ├── 02_langchain_notes.md
-│   └── 03_project_brief.txt
-├── modules/
-│   ├── __init__.py
-│   ├── loader.py
-│   ├── splitter.py
-│   └── pipeline.py
+├── config.py
+├── main.py
 ├── 01_loader_basics.py
 ├── 02_splitter_compare.py
 ├── 03_markdown_headers.py
 ├── 04_metadata_preserve.py
-└── 05_full_pipeline.py
+├── 05_full_pipeline.py
+├── documents/
+│   ├── 01_python_intro.txt
+│   ├── 02_langchain_notes.md
+│   └── 03_project_brief.txt
+└── modules/
+    ├── __init__.py
+    ├── loader.py
+    ├── splitter.py
+    └── pipeline.py
 ```
 
-下面我们按文件逐个解释。
+Day 17 的核心是：
 
----
-
-## 5. 核心文件详细说明
-
-### 5.1 `main.py`
-
-文件路径：
-- [day17/main.py](/D:/vscode项目/学习/day17/main.py)
-
-#### 作用
-
-`main.py` 是整个项目的统一入口。
-
-你运行：
-
-```bash
-python main.py
+```text
+documents/
+  -> loader.py
+  -> splitter.py
+  -> pipeline.py
+  -> 练习脚本
 ```
 
-实际上就是启动 `05_full_pipeline.py` 里的交互式应用。
-
-#### 为什么要单独有这个入口
-
-这样做的好处是：
-
-- 用户只要记住一个入口文件
-- 后续如果想换成 Web 或 GUI，入口文件可以快速替换
-- 业务逻辑可以继续保留在独立模块中
-
 ---
 
-### 5.2 `config.py`
+## 3. 运行方式
 
-文件路径：
-- [day17/config.py](/D:/vscode项目/学习/day17/config.py)
+### 3.1 安装依赖
 
-#### 作用
+在 `day17` 文件夹下运行：
 
-这个文件统一管理项目配置，包括：
-
-- 文档目录
-- chunk_size
-- chunk_overlap
-- 预览条数
-- 每段预览显示的最大字符数
-
-#### 为什么要这样做
-
-文档切分是一个非常适合调参的任务。
-
-比如：
-
-- `chunk_size` 太小，信息会被切得太碎
-- `chunk_size` 太大，后续处理会变慢
-- `chunk_overlap` 太小，前后上下文可能断掉
-- `chunk_overlap` 太大，重复内容会变多
-
-把这些参数放在配置文件里，后面更容易实验和比较。
-
----
-
-### 5.3 `requirements.txt`
-
-文件路径：
-- [day17/requirements.txt](/D:/vscode项目/学习/day17/requirements.txt)
-
-#### 作用
-
-记录本项目需要的依赖：
-
-- `langchain-community`
-- `langchain-text-splitters`
-- `rich`
-- `python-dotenv`
-
-#### 为什么重要
-
-这样别人可以通过：
-
-```bash
+```powershell
 pip install -r requirements.txt
 ```
 
-快速搭建相同环境。
+### 3.2 配置环境变量
+
+复制 `.env.example` 为 `.env`：
+
+```powershell
+copy .env.example .env
+```
+
+Day 17 不需要 API Key。
+
+因为这一节只做本地文档加载和文本切分，不调用大模型。
+
+你可以在 `.env` 中调整：
+
+```env
+DOCS_DIR=documents
+CHUNK_SIZE=300
+CHUNK_OVERLAP=60
+PREVIEW_LIMIT=3
+MAX_PREVIEW_CHARS=160
+```
+
+### 3.3 运行完整交互程序
+
+```powershell
+python main.py
+```
+
+进入程序后可以输入：
+
+```text
+load
+preview
+split
+compare
+stats
+chunks
+q
+```
+
+### 3.4 分步骤运行练习脚本
+
+```powershell
+python 01_loader_basics.py
+python 02_splitter_compare.py
+python 03_markdown_headers.py
+python 04_metadata_preserve.py
+python 05_full_pipeline.py
+```
+
+建议第一次学习时按顺序运行。
 
 ---
 
-### 5.4 `.env.example`
+## 4. 文档加载与切分的核心原理
 
-文件路径：
-- [day17/.env.example](/D:/vscode项目/学习/day17/.env.example)
+### 4.1 什么是文档加载
 
-#### 作用
+文档加载就是把本地文件读进程序。
 
-这个文件给你提供默认配置样例。
+在 LangChain 中，加载后的文档通常是 `Document` 对象。
 
-这里并不需要 API Key，因为 Day 17 主要是本地文档处理。
+一个 `Document` 主要包含两部分：
 
-#### 包含哪些配置
+```python
+Document(
+    page_content="文档正文内容",
+    metadata={"source": "文件路径"}
+)
+```
 
-- `DOCS_DIR`
-- `CHUNK_SIZE`
-- `CHUNK_OVERLAP`
-- `PREVIEW_LIMIT`
-- `MAX_PREVIEW_CHARS`
+`page_content` 保存正文。
 
----
+`metadata` 保存来源、文件名、文件类型、长度等附加信息。
 
-### 5.5 `documents/`
+### 4.2 为什么需要 metadata
 
-文件路径：
-- [day17/documents/](/D:/vscode项目/学习/day17/documents)
+metadata 是“描述数据的数据”。
 
-#### 作用
+在 RAG 项目中，它非常重要。
 
-这个目录放示例文档，是 Day 17 最重要的输入数据区。
+原因：
 
-我们准备了三类文件：
+1. 可以知道 chunk 来自哪个文件。
+2. 可以知道 chunk 属于什么文件类型。
+3. 可以在检索结果中展示引用来源。
+4. 可以按文件、标签、用户、项目做过滤。
+5. 方便调试切分和检索效果。
 
-- `01_python_intro.txt`
-- `02_langchain_notes.md`
-- `03_project_brief.txt`
+如果没有 metadata，后面检索出来的内容就很难追踪来源。
 
-#### 为什么要放真实文本样例
+### 4.3 什么是文本切分
 
-因为文档加载和切分不是空谈，它需要真实内容。
+文本切分就是把长文档拆成多个小块。
 
-你可以通过这些样例文件观察：
+这些小块通常叫：
 
-- 文档是怎么被加载的
-- 不同文件类型怎么处理
-- 长文本怎么被切成 chunk
+```text
+chunk
+```
 
----
+为什么要切分？
 
-### 5.6 `modules/loader.py`
+1. 长文档不适合直接做 Embedding。
+2. 长文档不适合全部塞进模型上下文。
+3. 用户问题通常只和文档中的一小段相关。
+4. 切成小块后，向量检索会更精准。
+5. 后续 RAG 可以只拿最相关的几个 chunk 回答。
 
-文件路径：
-- [day17/modules/loader.py](/D:/vscode项目/学习/day17/modules/loader.py)
+### 4.4 什么是 chunk_size
 
-#### 作用
+`chunk_size` 表示每个 chunk 的最大长度。
 
-这个模块负责把文件读取成 `Document` 对象。
+例如：
 
-它主要做了几件事：
+```python
+CHUNK_SIZE = 300
+```
 
-1. 解析文档目录路径。
-2. 按文件类型加载 `.txt` 和 `.md`。
-3. 给每个文档补充标准化 metadata。
-4. 提供文档摘要和预览工具。
+意思是每个文本块大约控制在 300 个字符以内。
 
-#### 为什么要单独做成模块
+如果 `chunk_size` 太小：
 
-因为“读取文件”和“切分文本”本来就是两件事。
+1. 文本会被切得很碎。
+2. 上下文容易不完整。
+3. 一个答案可能被拆到多个 chunk 里。
 
-拆开以后你会更容易：
+如果 `chunk_size` 太大：
 
-- 单独调试加载问题
-- 单独调试切分问题
-- 后面扩展 PDF、CSV、JSON 时更方便
+1. 每个 chunk 内容太杂。
+2. 检索可能不够精准。
+3. 后续模型上下文会被浪费。
 
-#### 你应该重点关注什么
+### 4.5 什么是 chunk_overlap
 
-- `load_documents`
-- `normalize_metadata`
-- `summarize_documents`
-- `preview_documents`
+`chunk_overlap` 表示相邻 chunk 之间重复保留多少字符。
 
-这些函数构成了加载阶段的核心。
+例如：
 
----
+```python
+CHUNK_OVERLAP = 60
+```
 
-### 5.7 `modules/splitter.py`
+意思是前后两个 chunk 会有大约 60 个字符重叠。
 
-文件路径：
-- [day17/modules/splitter.py](/D:/vscode项目/学习/day17/modules/splitter.py)
+为什么需要 overlap？
 
-#### 作用
+因为句子可能刚好被切断。
 
-这个模块负责把长文档切成多个 chunk。
-
-它提供了多种切分方式：
-
-- `split_recursive`：递归切分
-- `split_character`：字符切分
-- `split_markdown_headers`：Markdown 标题切分
-- `split_by_type`：按文件类型选择切分策略
-- `compare_splitters`：对比不同切分器的结果
-
-#### 为什么要比较多个切分器
-
-因为不同文档结构适合不同切分方式。
-
-比如：
-
-- 普通文本适合递归切分
-- Markdown 文档适合按标题拆分
-- 简单文本也可以用字符切分做基础演示
-
-#### 你应该重点理解的参数
-
-`chunk_size`
-- chunk 的最大长度
-
-`chunk_overlap`
-- 相邻 chunk 之间重叠的内容长度
-
-它们直接影响后续检索和上下文连续性。
+overlap 可以保留前后文，让语义更连续。
 
 ---
 
-### 5.8 `modules/pipeline.py`
+## 5. 每个文件的详细解释
 
-文件路径：
-- [day17/modules/pipeline.py](/D:/vscode项目/学习/day17/modules/pipeline.py)
+### 5.1 `config.py`
 
-#### 作用
+这个文件是 Day 17 的统一配置中心。
 
-这个模块把加载和切分串成一个完整流程。
+它负责读取 `.env` 和 `.env.example`。
 
-它负责：
+主要配置：
 
-- 加载文档
-- 查看文档统计
-- 查看文档预览
-- 进行切分
-- 对比切分器
-- 查看 chunk 统计
+1. `DOCS_DIR`：文档目录，默认是 `documents`。
+2. `CHUNK_SIZE`：每个 chunk 的最大字符数。
+3. `CHUNK_OVERLAP`：相邻 chunk 的重叠字符数。
+4. `PREVIEW_LIMIT`：预览文档时展示几份文档。
+5. `MAX_PREVIEW_CHARS`：每份预览最多展示多少字符。
+6. `MARKDOWN_HEADERS`：Markdown 标题切分规则。
 
-#### 为什么要有这个模块
+为什么要有配置文件？
 
-因为真实项目里通常不会只看某一个函数，而是看完整流程。
+因为文档切分经常需要调参。
 
-这个模块就是一个“文档处理管线”的骨架。
-
----
-
-### 5.9 `modules/__init__.py`
-
-文件路径：
-- [day17/modules/__init__.py](/D:/vscode项目/学习/day17/modules/__init__.py)
-
-#### 作用
-
-它的作用比较简单：
-
-- 让 `modules` 成为一个包
-- 方便后续导入
+你可以只改 `config.py` 或 `.env`，不用到处改代码。
 
 ---
 
-## 6. 练习文件详细说明
+### 5.2 `.env.example`
 
-### 6.1 `01_loader_basics.py`
+这个文件是配置模板。
 
-文件路径：
-- [day17/01_loader_basics.py](/D:/vscode项目/学习/day17/01_loader_basics.py)
+Day 17 不需要 API Key。
 
-#### 作用
+它主要提供这些默认值：
 
-这个脚本帮助你先看懂“加载”。
+```text
+DOCS_DIR
+CHUNK_SIZE
+CHUNK_OVERLAP
+PREVIEW_LIMIT
+MAX_PREVIEW_CHARS
+```
 
-你会看到：
-
-- 加载了多少文档
-- 总字符数是多少
-- 文件类型有哪些
-- 每个文档的内容预览是什么
-
-#### 学习重点
-
-先别急着切分，先确认“文档有没有正确读进来”。
+你可以复制成 `.env` 后修改。
 
 ---
 
-### 6.2 `02_splitter_compare.py`
+### 5.3 `documents/`
 
-文件路径：
-- [day17/02_splitter_compare.py](/D:/vscode项目/学习/day17/02_splitter_compare.py)
+这个文件夹保存示例文档。
 
-#### 作用
+当前有三份：
 
-这个脚本帮助你比较不同切分器的结果。
+1. `01_python_intro.txt`
+2. `02_langchain_notes.md`
+3. `03_project_brief.txt`
 
-你会看到：
+它们分别用于演示：
 
-- recursive 切了多少块
-- character 切了多少块
-- by_type 切了多少块
-- 平均 chunk 长度是多少
+1. 普通文本加载。
+2. Markdown 文档加载。
+3. 项目说明类文档切分。
 
-#### 学习重点
-
-理解不同切分方式的区别，而不是只会调用一个函数。
+你可以继续往里面添加 `.txt` 或 `.md` 文件。
 
 ---
 
-### 6.3 `03_markdown_headers.py`
+### 5.4 `modules/loader.py`
 
-文件路径：
-- [day17/03_markdown_headers.py](/D:/vscode项目/学习/day17/03_markdown_headers.py)
+这个文件负责文档加载。
 
-#### 作用
+核心函数：
 
-这个脚本专门演示 Markdown 标题切分。
+```python
+resolve_docs_dir(base_dir, docs_dir)
+```
 
-它会告诉你：
+作用：
 
-- 如何按一级标题、二级标题、三级标题拆分
-- 拆分后 chunk 的 metadata 是什么
+```text
+把相对路径 documents 转成绝对路径。
+```
 
-#### 学习重点
+核心函数：
 
-Markdown 文档很适合按结构切分，因为标题本身就能表达章节边界。
+```python
+_load_by_glob(docs_path, glob_pattern)
+```
+
+作用：
+
+```text
+按文件类型加载文档，例如 *.txt 或 *.md。
+```
+
+它内部使用：
+
+```python
+DirectoryLoader
+TextLoader
+```
+
+核心函数：
+
+```python
+normalize_metadata(doc)
+```
+
+作用：
+
+```text
+给每份文档补充统一 metadata。
+```
+
+补充字段包括：
+
+1. `source`
+2. `file_name`
+3. `file_type`
+4. `doc_length`
+
+核心函数：
+
+```python
+load_documents(docs_path)
+```
+
+作用：
+
+```text
+加载 documents/ 中所有 .txt 和 .md 文档。
+```
+
+核心函数：
+
+```python
+summarize_documents(documents)
+```
+
+作用：
+
+```text
+统计文档数量、文件类型和总字符数。
+```
+
+核心函数：
+
+```python
+preview_documents(documents)
+```
+
+作用：
+
+```text
+生成文档预览文本。
+```
 
 ---
 
-### 6.4 `04_metadata_preserve.py`
+### 5.5 `modules/splitter.py`
 
-文件路径：
-- [day17/04_metadata_preserve.py](/D:/vscode项目/学习/day17/04_metadata_preserve.py)
+这个文件负责文档切分。
 
-#### 作用
+核心函数：
 
-这个脚本重点演示 metadata 保留。
+```python
+split_recursive(documents, chunk_size, chunk_overlap)
+```
 
-你会看到：
+作用：
 
-- chunk 来自哪个文件
-- chunk 使用了什么切分方式
-- metadata 怎么跟着 chunk 一起走
+```text
+使用 RecursiveCharacterTextSplitter 递归切分文档。
+```
 
-#### 学习重点
+递归切分器会按优先级尝试更自然的分隔符。
 
-后续做检索时，metadata 非常重要，因为它可以帮你追踪来源。
+本项目设置的分隔符包括：
+
+```python
+["\n\n", "\n", "。", "！", "？", "；", ";", " "]
+```
+
+核心函数：
+
+```python
+split_character(documents, chunk_size, chunk_overlap)
+```
+
+作用：
+
+```text
+使用 CharacterTextSplitter 做基础字符切分。
+```
+
+它比较简单，适合和递归切分器做对比。
+
+核心函数：
+
+```python
+split_markdown_headers(document)
+```
+
+作用：
+
+```text
+按 Markdown 标题结构切分文档。
+```
+
+它会识别：
+
+1. `#`
+2. `##`
+3. `###`
+
+这种方式适合结构清晰的 Markdown 文档。
+
+核心函数：
+
+```python
+split_by_type(documents, chunk_size, chunk_overlap)
+```
+
+作用：
+
+```text
+根据文件类型自动选择切分方式。
+```
+
+当前逻辑：
+
+```text
+.md -> Markdown 标题切分
+其他 -> 递归切分
+```
+
+核心函数：
+
+```python
+compare_splitters(documents, chunk_size, chunk_overlap)
+```
+
+作用：
+
+```text
+对比 recursive、character、by_type 三种切分策略。
+```
 
 ---
 
-### 6.5 `05_full_pipeline.py`
+### 5.6 `modules/pipeline.py`
 
-文件路径：
-- [day17/05_full_pipeline.py](/D:/vscode项目/学习/day17/05_full_pipeline.py)
+这个文件把加载和切分串成完整管线。
 
-#### 作用
+核心类：
+
+```python
+DocumentPipeline
+```
+
+它保存这些状态：
+
+1. `base_dir`
+2. `docs_dir`
+3. `chunk_size`
+4. `chunk_overlap`
+5. `documents`
+6. `chunks`
+7. `comparisons`
+
+常用方法：
+
+```python
+load()
+document_summary()
+document_previews()
+split()
+split_by_type()
+compare()
+chunk_report()
+chunk_previews()
+```
+
+为什么要有 pipeline？
+
+因为真实项目不是只调用一个函数，而是一整条流程：
+
+```text
+加载文档
+  -> 查看统计
+  -> 预览内容
+  -> 切分文档
+  -> 查看 chunk 统计
+  -> 预览 chunk
+```
+
+---
+
+### 5.7 `modules/__init__.py`
+
+这个文件让 `modules/` 成为 Python 包。
+
+Day 17 的核心逻辑在：
+
+1. `loader.py`
+2. `splitter.py`
+3. `pipeline.py`
+
+---
+
+### 5.8 `01_loader_basics.py`
+
+这是练习 1 的代码文件。
+
+作用：
+
+```text
+演示文档加载基础。
+```
+
+它会打印：
+
+1. 文档数量。
+2. 总字符数。
+3. 文件类型分布。
+4. 文档内容预览。
+
+重点理解：
+
+```python
+pipeline.load()
+pipeline.document_summary()
+pipeline.document_previews()
+```
+
+---
+
+### 5.9 `02_splitter_compare.py`
+
+这是练习 2 的代码文件。
+
+作用：
+
+```text
+对比不同切分器的结果。
+```
+
+它会展示：
+
+1. 切分策略名称。
+2. chunk 数量。
+3. 平均 chunk 长度。
+
+重点理解：
+
+```python
+pipeline.compare()
+```
+
+---
+
+### 5.10 `03_markdown_headers.py`
+
+这是练习 3 的代码文件。
+
+作用：
+
+```text
+专门演示 Markdown 标题切分。
+```
+
+它会：
+
+1. 加载全部文档。
+2. 筛选 `.md` 文档。
+3. 使用 `split_markdown_headers()` 切分。
+4. 打印 chunk 内容和 metadata。
+
+---
+
+### 5.11 `04_metadata_preserve.py`
+
+这是练习 4 的代码文件。
+
+作用：
+
+```text
+观察文档切分后 metadata 是否被保留。
+```
+
+你应该重点看输出里的：
+
+```text
+source
+file_name
+file_type
+doc_length
+splitter
+```
+
+这些信息后面做 RAG 引用来源时很重要。
+
+---
+
+### 5.12 `05_full_pipeline.py`
 
 这是 Day 17 的完整交互应用。
 
-它支持：
+它提供一个命令行小程序。
 
-- `load`
-- `preview`
-- `split`
-- `compare`
-- `stats`
-- `chunks`
+支持命令：
 
-#### 为什么要有这个文件
-
-因为 Day 17 不只是练习函数，更要让你感受到一个真正的“文档处理流程”。
-
----
-
-## 7. Day 17 的核心知识点
-
-### 7.1 什么是文档加载
-
-文档加载就是把文件内容读成程序可以处理的对象。
-
-在 LangChain 里，这类对象通常叫 `Document`。
-
-一个 `Document` 往往包含两部分：
-
-- `page_content`
-- `metadata`
-
-### 7.2 什么是文档切分
-
-文档切分就是把长文本拆成多个小块。
-
-这样做的目的通常是：
-
-- 方便后续检索
-- 方便做 embedding
-- 方便限制上下文长度
-- 方便提高回答质量
-
-### 7.3 为什么切分很重要
-
-如果切得太大：
-
-- 后续处理慢
-- 上下文浪费
-- 检索命中不精准
-
-如果切得太小：
-
-- 信息被拆散
-- 上下文不完整
-- 答案可能丢失语义
-
-所以切分其实是一个“平衡问题”。
-
-### 7.4 `chunk_size` 和 `chunk_overlap`
-
-`chunk_size`
-- 控制每块最大长度
-
-`chunk_overlap`
-- 控制相邻块之间的重叠
-
-重叠的意义是：
-
-- 保留前后文
-- 避免句子被切断
-- 提升后续检索连续性
-
----
-
-## 8. 推荐运行顺序
-
-建议按照下面顺序学习：
-
-1. 先看 `01_loader_basics.py`
-2. 再看 `02_splitter_compare.py`
-3. 再看 `03_markdown_headers.py`
-4. 再看 `04_metadata_preserve.py`
-5. 最后运行 `05_full_pipeline.py`
-
-这样你会先从“读文件”开始，再慢慢进入“怎么切文件”。
-
----
-
-## 9. 如何运行
-
-安装依赖：
-
-```bash
-pip install -r requirements.txt
+```text
+load
+preview
+split
+compare
+stats
+chunks
+q
 ```
 
-运行主程序：
+核心类：
 
-```bash
+```python
+DocumentApp
+```
+
+它负责：
+
+1. 创建 `DocumentPipeline`。
+2. 显示菜单。
+3. 加载文档。
+4. 预览文档。
+5. 切分文档。
+6. 对比切分器。
+7. 预览 chunk。
+
+---
+
+### 5.13 `main.py`
+
+这是 Day 17 的统一入口。
+
+运行：
+
+```powershell
 python main.py
 ```
 
-单独运行练习脚本也可以，例如：
+它会启动 `05_full_pipeline.py` 中的完整交互应用。
 
-```bash
-python 01_loader_basics.py
-python 02_splitter_compare.py
+---
+
+## 6. 练习题专区
+
+下面是 Day 17 的完整练习题。
+
+以后每天的 README 都会按这个格式写：
+
+```text
+练习题编号
+  -> 练习目标
+  -> 题目要求
+  -> 操作提示
+  -> 参考答案
+  -> 如何运行
+  -> 你应该观察什么结果
 ```
 
 ---
 
-## 10. 常见问题
+### 6.1 练习 1：文档加载基础
 
-### 10.1 为什么我看不到文档内容？
+文件：
 
-先检查：
+```text
+01_loader_basics.py
+```
 
-- `documents/` 目录里是否有文件
-- 文件编码是不是 UTF-8
-- `DOCS_DIR` 配置是否正确
+练习目标：
 
-### 10.2 为什么切分结果看起来很多？
+确认本地文档可以被正确读取成 LangChain `Document` 对象。
 
-这通常说明：
+题目要求：
 
-- `chunk_size` 太小
-- 文档本身很长
-- 你使用了重叠较大的设置
+1. 加载 `documents/` 下的 `.txt` 和 `.md` 文件。
+2. 打印文档数量。
+3. 打印总字符数。
+4. 打印文件类型分布。
+5. 打印文档内容预览。
 
-### 10.3 为什么 Markdown 文档更适合标题切分？
+操作提示：
 
-因为 Markdown 本身就已经带有清晰结构。
+重点观察：
 
-按照标题切分更容易保留语义边界。
+```text
+文档数量
+总字符数
+文件类型
+文档预览
+```
+
+参考答案：
+
+答案已经写在 `01_loader_basics.py` 中。
+
+核心流程：
+
+```text
+DocumentPipeline()
+  -> load()
+  -> document_summary()
+  -> document_previews()
+```
+
+如何运行：
+
+```powershell
+python 01_loader_basics.py
+```
+
+你应该观察到：
+
+1. 文档数量应该是 3。
+2. 文件类型里应该包含 `.txt` 和 `.md`。
+3. 文档预览中能看到每个文件的部分内容。
 
 ---
 
-## 11. 学习建议
+### 6.2 练习 2：对比不同切分器
 
-1. 先把每个模块的职责看懂。
-2. 自己修改 `CHUNK_SIZE` 和 `CHUNK_OVERLAP` 试试。
-3. 给 `documents/` 里再加一个新文件观察效果。
-4. 对比不同切分器的 chunk 结果。
-5. 想一想后面的向量数据库为什么依赖这一步。
+文件：
+
+```text
+02_splitter_compare.py
+```
+
+练习目标：
+
+理解不同切分策略会产生不同数量和长度的 chunk。
+
+题目要求：
+
+1. 加载示例文档。
+2. 使用 recursive 切分器切分。
+3. 使用 character 切分器切分。
+4. 使用 by_type 策略切分。
+5. 用表格对比 chunk 数量和平均长度。
+
+操作提示：
+
+重点看：
+
+```text
+recursive
+character
+by_type
+```
+
+参考答案：
+
+答案已经写在 `02_splitter_compare.py` 中。
+
+核心代码：
+
+```python
+comparisons = pipeline.compare()
+```
+
+如何运行：
+
+```powershell
+python 02_splitter_compare.py
+```
+
+你应该观察到：
+
+1. 不同切分器的 chunk 数量可能不同。
+2. 平均长度也可能不同。
+3. Markdown 文档在 `by_type` 中会优先使用标题切分。
 
 ---
 
-## 12. 小结
+### 6.3 练习 3：Markdown 标题切分
 
-Day 17 是整个 RAG 体系里非常基础但又非常重要的一环。
+文件：
 
-你要记住：
+```text
+03_markdown_headers.py
+```
 
-- 文档先加载
-- 再切分
-- 再进入后续索引和检索
+练习目标：
 
-如果这一步做得好，后面的向量数据库和问答系统会更稳定、更容易调试。
+理解 Markdown 文档可以按标题层级切分。
 
+题目要求：
+
+1. 加载全部文档。
+2. 找到 `.md` 文件。
+3. 使用 `split_markdown_headers()` 切分。
+4. 打印每个 chunk 的内容和 metadata。
+
+操作提示：
+
+Markdown 标题切分会识别：
+
+```text
+#
+##
+###
+```
+
+参考答案：
+
+答案已经写在 `03_markdown_headers.py` 中。
+
+核心代码：
+
+```python
+md_docs = [doc for doc in pipeline.documents if doc.metadata.get("file_type") == ".md"]
+chunks = split_markdown_headers(md_docs[0])
+```
+
+如何运行：
+
+```powershell
+python 03_markdown_headers.py
+```
+
+你应该观察到：
+
+1. 输出中会出现多个 Markdown chunk。
+2. metadata 中会保留原始文件信息。
+3. metadata 中可能包含标题层级信息。
+
+---
+
+### 6.4 练习 4：保留 metadata
+
+文件：
+
+```text
+04_metadata_preserve.py
+```
+
+练习目标：
+
+确认文档切分后，来源信息仍然保留在 chunk 里。
+
+题目要求：
+
+1. 加载文档。
+2. 使用 `split_by_type()` 切分。
+3. 打印前 5 个 chunk。
+4. 查看每个 chunk 的 metadata。
+
+操作提示：
+
+重点看：
+
+```text
+source
+file_name
+file_type
+doc_length
+splitter
+```
+
+参考答案：
+
+答案已经写在 `04_metadata_preserve.py` 中。
+
+核心代码：
+
+```python
+pipeline.split_by_type()
+for chunk in pipeline.chunks[:5]:
+    print(chunk.metadata)
+```
+
+如何运行：
+
+```powershell
+python 04_metadata_preserve.py
+```
+
+你应该观察到：
+
+1. 每个 chunk 都能追踪到来源文件。
+2. Markdown chunk 会带有 `splitter=markdown_headers`。
+3. metadata 没有因为切分而丢失。
+
+---
+
+### 6.5 练习 5：完整文档处理管线
+
+文件：
+
+```text
+05_full_pipeline.py
+```
+
+练习目标：
+
+把加载、预览、切分、对比和 chunk 预览串成一个完整交互流程。
+
+题目要求：
+
+1. 启动交互程序。
+2. 输入 `load` 加载文档。
+3. 输入 `preview` 查看文档预览。
+4. 输入 `split` 执行切分。
+5. 输入 `chunks` 查看 chunk 预览。
+6. 输入 `compare` 对比切分策略。
+7. 输入 `q` 退出。
+
+操作提示：
+
+建议按这个命令顺序输入：
+
+```text
+load
+preview
+split
+chunks
+compare
+stats
+q
+```
+
+参考答案：
+
+答案已经写在 `05_full_pipeline.py` 中。
+
+核心类：
+
+```python
+DocumentApp
+```
+
+如何运行：
+
+```powershell
+python 05_full_pipeline.py
+```
+
+或：
+
+```powershell
+python main.py
+```
+
+你应该观察到：
+
+1. 程序会显示命令菜单。
+2. `load` 后显示加载文档数量。
+3. `preview` 后显示文档统计和预览。
+4. `split` 后显示 chunk 数量和平均长度。
+5. `chunks` 后显示切分结果预览。
+6. `compare` 后显示不同切分策略对比。
+
+---
+
+## 7. 练习题对应文件答案说明
+
+Day 17 的练习答案已经写进对应代码文件中。
+
+对应关系：
+
+```text
+练习 1 -> 01_loader_basics.py
+练习 2 -> 02_splitter_compare.py
+练习 3 -> 03_markdown_headers.py
+练习 4 -> 04_metadata_preserve.py
+练习 5 -> 05_full_pipeline.py
+```
+
+这些练习文件都是完整可运行的参考答案。
+
+你可以直接运行它们查看效果。
+
+---
+
+## 8. Day 17 是否需要 API Key
+
+Day 17 不需要 API Key。
+
+原因：
+
+1. 这一节只处理本地文件。
+2. 不调用大模型。
+3. 不生成 Embedding。
+4. 不访问向量数据库 API。
+
+Day 17 的输出完全来自本地文档加载和文本切分。
+
+真正需要 API 的地方通常是：
+
+1. Embedding。
+2. Chat 模型回答。
+3. 在线检索服务。
+
+这些会在后续 RAG 问答系统里使用。
+
+---
+
+## 9. 常见问题
+
+### 9.1 为什么加载不到文档
+
+可能原因：
+
+1. `documents/` 文件夹不存在。
+2. 文件不是 `.txt` 或 `.md`。
+3. `DOCS_DIR` 配置写错。
+4. 文件编码不是 UTF-8。
+
+解决方式：
+
+1. 检查 `day17/documents/` 是否有文件。
+2. 检查 `.env` 中的 `DOCS_DIR`。
+3. 先运行 `python 01_loader_basics.py`。
+
+---
+
+### 9.2 为什么切分结果很多
+
+可能原因：
+
+1. `CHUNK_SIZE` 太小。
+2. `CHUNK_OVERLAP` 太大。
+3. 文档本身比较长。
+4. Markdown 标题比较多。
+
+解决方式：
+
+1. 把 `CHUNK_SIZE` 调大。
+2. 把 `CHUNK_OVERLAP` 调小。
+3. 运行 `python 02_splitter_compare.py` 对比结果。
+
+---
+
+### 9.3 为什么 Markdown 适合按标题切分
+
+因为 Markdown 本身有结构。
+
+例如：
+
+```markdown
+# 一级标题
+## 二级标题
+### 三级标题
+```
+
+标题通常代表章节边界。
+
+按标题切分更容易保留语义完整性。
+
+---
+
+### 9.4 为什么 metadata 必须保留
+
+因为后续 RAG 检索时，需要知道答案来源。
+
+metadata 可以帮助你：
+
+1. 展示引用来源。
+2. 过滤某个文件。
+3. 调试检索结果。
+4. 定位原始资料。
+
+---
+
+## 10. 推荐学习顺序
+
+建议按这个顺序学习：
+
+1. 先读 `README.md`。
+2. 运行 `python 01_loader_basics.py`。
+3. 打开 `modules/loader.py` 看加载逻辑。
+4. 运行 `python 02_splitter_compare.py`。
+5. 打开 `modules/splitter.py` 看切分逻辑。
+6. 运行 `python 03_markdown_headers.py`。
+7. 理解 Markdown 标题切分。
+8. 运行 `python 04_metadata_preserve.py`。
+9. 理解 metadata 为什么要保留。
+10. 运行 `python 05_full_pipeline.py`。
+11. 最后运行 `python main.py`。
+
+---
+
+## 11. Day 17 总结
+
+Day 17 的关键词是：
+
+```text
+Document
+page_content
+metadata
+loader
+splitter
+chunk_size
+chunk_overlap
+Markdown header
+pipeline
+```
+
+你可以这样理解：
+
+```text
+Day 15 是理解 RAG 整体。
+Day 16 是理解向量库存储和检索。
+Day 17 是把原始资料整理成后续可以检索的数据块。
+```
+
+一句话总结：
+
+```text
+文档加载与切分，就是把杂乱的原始文件变成结构清楚、来源可追踪、适合检索的 chunk。
+```
+
+这一步做好了，后面的向量数据库、RAG 检索链、文档问答系统都会更稳定。

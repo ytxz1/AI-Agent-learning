@@ -13,7 +13,11 @@ from typing import List
 
 @dataclass
 class DocumentItem:
-    """表示一份文档。"""
+    """项目内部统一使用的文档对象。
+
+    page_content：保存正文。
+    metadata：保存来源文件、路径、块编号等附加信息。
+    """
 
     page_content: str
     metadata: dict
@@ -26,6 +30,7 @@ def _read_text_file(path: Path) -> str:
             return path.read_text(encoding=encoding)
         except Exception:
             continue
+    # 如果常见编码都失败，就忽略错误读取，尽量不中断学习流程。
     return path.read_text(errors="ignore")
 
 
@@ -37,8 +42,11 @@ def load_documents(docs_dir: str) -> List[DocumentItem]:
 
     documents: List[DocumentItem] = []
     for file_path in sorted(root.rglob("*")):
+        # 只处理文件，跳过文件夹。
         if not file_path.is_file():
             continue
+
+        # Day 16 先支持最容易理解的 .txt 和 .md。
         if file_path.suffix.lower() not in {".txt", ".md"}:
             continue
 
@@ -46,6 +54,7 @@ def load_documents(docs_dir: str) -> List[DocumentItem]:
         if not content:
             continue
 
+        # 把正文和来源信息放在一起，后面检索结果可以追踪来源。
         documents.append(
             DocumentItem(
                 page_content=content,
@@ -57,4 +66,3 @@ def load_documents(docs_dir: str) -> List[DocumentItem]:
         )
 
     return documents
-

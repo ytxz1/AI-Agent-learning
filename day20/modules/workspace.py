@@ -28,8 +28,10 @@ class WorkspaceFile:
 def _is_within_root(root: Path, candidate: Path) -> bool:
     """判断路径是否在工作区根目录内。"""
     try:
+        # resolve 可以把相对路径、.. 等都转成真实绝对路径。
         root_resolved = root.resolve()
         candidate_resolved = candidate.resolve()
+        # commonpath 相同，说明 candidate 没有逃出 root。
         return os.path.commonpath([str(root_resolved), str(candidate_resolved)]) == str(root_resolved)
     except Exception:
         return False
@@ -39,6 +41,7 @@ class WorkspaceInspector:
     """负责扫描和读取工作区。"""
 
     def __init__(self, workspace_dir: str | Path):
+        # 工作区根目录，所有读取操作都必须限制在这个目录内。
         self.root = Path(workspace_dir).resolve()
 
     def resolve_path(self, relative_path: str | Path) -> Path:
@@ -55,6 +58,7 @@ class WorkspaceInspector:
         max_files: int = 200,
     ) -> list[Path]:
         """列出工作区中的文件。"""
+        # 默认只关注代码、文档、配置文件，避免扫描图片/缓存/二进制文件。
         patterns = patterns or ["*.py", "*.md", "*.txt", "*.json", "*.yml", "*.yaml"]
         results: list[Path] = []
 
@@ -65,9 +69,11 @@ class WorkspaceInspector:
                 continue
 
             rel = path.relative_to(self.root)
+            # 限制扫描深度，避免输出太大。
             if len(rel.parts) - 1 > max_depth:
                 continue
 
+            # 只保留匹配扩展名的文件。
             if any(fnmatch.fnmatch(path.name.lower(), pattern.lower()) for pattern in patterns):
                 results.append(path)
 
@@ -85,6 +91,7 @@ class WorkspaceInspector:
             depth = len(rel.parts)
             if depth > max_depth + 1:
                 continue
+            # 根据深度生成缩进，模拟树形结构。
             indent = "  " * (depth - 1)
             suffix = "/" if path.is_dir() else ""
             lines.append(f"{indent}- {rel.name}{suffix}")
@@ -93,6 +100,7 @@ class WorkspaceInspector:
 
     def read_text(self, relative_path: str | Path, max_chars: Optional[int] = None) -> str:
         """读取文件文本。"""
+        # 先经过 resolve_path 做安全检查。
         path = self.resolve_path(relative_path)
         text = path.read_text(encoding="utf-8", errors="ignore")
         if max_chars is not None:
@@ -107,6 +115,7 @@ class WorkspaceInspector:
 
     def stats(self) -> dict:
         """统计工作区文件信息。"""
+        # 这里统计全部文件，不只统计 list_files 的默认类型。
         files = [p for p in self.root.rglob("*") if p.is_file()]
         total_size = sum(p.stat().st_size for p in files)
         return {
@@ -118,7 +127,7 @@ class WorkspaceInspector:
     def summarize_files(self, max_files: int = 5, max_chars: int = 220) -> list[WorkspaceFile]:
         """返回一组常见文件的预览。"""
         previews: list[WorkspaceFile] = []
+        # 只预览前 max_files 个常见文件，避免上下文过长。
         for path in self.list_files(max_files=max_files):
             previews.append(self.file_preview(path, max_chars=max_chars))
         return previews
-

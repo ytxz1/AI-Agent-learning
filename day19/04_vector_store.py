@@ -1,5 +1,5 @@
 """
-Day 12 - 向量数据库：存储和检索向量
+Day 19 - 项目 2：RAG 问答系统 - 向量数据库
 
 本示例演示向量数据库的核心概念和使用：
 1. 什么是向量数据库
@@ -26,7 +26,7 @@ from rich.table import Table
 console = Console()
 
 console.print("=" * 60, style="bold blue")
-console.print("Day 12 - 向量数据库", style="bold blue")
+console.print("Day 19 - 向量数据库", style="bold blue")
 console.print("=" * 60, style="bold blue")
 
 # ============================================================

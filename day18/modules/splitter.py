@@ -13,6 +13,7 @@ from .loader import DocumentItem
 
 def _normalize_text(text: str) -> str:
     """清理多余空白，方便切分。"""
+    # 把三个及以上连续换行压缩成两个换行，保留段落感。
     return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
@@ -22,17 +23,20 @@ def _split_by_separator(text: str, chunk_size: int, chunk_overlap: int, separato
     if len(text) <= chunk_size:
         return [text] if text else []
 
+    # 依次尝试更自然的分隔符，例如段落、换行、中文句号。
     for separator in separators:
         if separator and separator in text:
             parts = text.split(separator)
             chunks: list[str] = []
             current = ""
             for part in parts:
+                # 尝试把当前片段拼进当前 chunk。
                 candidate = (current + separator + part).strip() if current else part.strip()
                 if len(candidate) <= chunk_size:
                     current = candidate
                 else:
                     if current:
+                        # 如果当前 chunk 仍然太长，就换下一层分隔符继续递归切。
                         chunks.extend(_split_by_separator(current, chunk_size, chunk_overlap, separators[1:]))
                     current = part.strip()
             if current:
@@ -54,6 +58,7 @@ def _sliding_window(text: str, chunk_size: int, chunk_overlap: int) -> list[str]
             chunks.append(chunk)
         if end >= len(text):
             break
+        # 下一块从 end - overlap 开始，保留一点上下文。
         start = max(0, end - chunk_overlap)
     return chunks
 
@@ -67,6 +72,7 @@ def _merge_with_overlap(chunks: list[str], chunk_overlap: int) -> list[str]:
         if not merged:
             merged.append(chunk)
             continue
+        # 太短的 chunk 单独存在意义不大，这里合并到上一块。
         if len(chunk) < max(40, chunk_overlap // 2):
             merged[-1] = (merged[-1] + "\n" + chunk).strip()
         else:
@@ -86,6 +92,7 @@ def split_documents(
     for doc in documents:
         chunks = _split_by_separator(doc.page_content, chunk_size, chunk_overlap, separators)
         for index, chunk in enumerate(chunks):
+            # 复制原文档 metadata，并追加 chunk 相关信息。
             metadata = dict(doc.metadata)
             metadata["chunk_index"] = index
             metadata["chunk_count"] = len(chunks)
@@ -100,6 +107,7 @@ def compare_chunk_stats(chunks: Iterable[DocumentItem]) -> dict:
     items = list(chunks)
     if not items:
         return {"chunk_count": 0, "total_chars": 0, "avg_chars": 0}
+    # 平均长度可以帮助判断 chunk 是否过碎或过大。
     total_chars = sum(len(chunk.page_content) for chunk in items)
     return {
         "chunk_count": len(items),
@@ -114,10 +122,10 @@ def preview_chunks(chunks: Iterable[DocumentItem], limit: int = 5, max_chars: in
     for index, chunk in enumerate(chunks):
         if index >= limit:
             break
+        # 压缩空白后截断显示。
         text = " ".join(chunk.page_content.split())
         snippet = text[:max_chars] + ("..." if len(text) > max_chars else "")
         previews.append(
             f"[{index + 1}] {chunk.metadata.get('file_name', 'unknown')} | chunk {chunk.metadata.get('chunk_index', 0)+1}/{chunk.metadata.get('chunk_count', 1)}: {snippet}"
         )
     return previews
-

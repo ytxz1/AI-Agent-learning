@@ -1,4 +1,10 @@
-"""Day 16 - 向量数据库演示入口。"""
+"""Day 16 - 向量数据库演示入口。
+
+直接运行：
+python main.py
+
+这个入口提供一个命令行小工具，可以构建索引、搜索、查看统计、保存和加载向量库。
+"""
 
 from __future__ import annotations
 
@@ -6,6 +12,7 @@ import os
 import sys
 from pathlib import Path
 
+# 让当前脚本无论从哪里运行，都能导入 day16 内部模块。
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from rich.console import Console
@@ -28,18 +35,33 @@ class VectorDBApp:
     """Day 16 的命令行演示程序。"""
 
     def __init__(self):
+        # documents 文件夹是知识库来源。
         self.docs_dir = Path(__file__).parent / "documents"
+
+        # Embedding 模型：有 API 用在线，没有 API 用本地。
         self.embedding_model = get_embedding_model()
+
+        # 可持久化向量库，保存路径来自 config.py。
         self.vector_store = PersistentVectorStore(self.embedding_model, VECTOR_DB_FILE)
+
+        # SearchDemo 负责把检索结果格式化输出。
         self.search_demo = SearchDemo(self.vector_store, top_k=TOP_K)
         self.running = True
 
     def build_index(self):
         """重新构建索引。"""
+        # 1. 加载文档。
         documents = load_documents(str(self.docs_dir))
+
+        # 2. 切分文本。
         chunks = split_documents(documents, chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
+
+        # 3. 清空旧记录，避免重复添加。
         self.vector_store.records = []
+
+        # 4. 写入新文本块。
         self.vector_store.add_documents(chunks)
+
         return len(documents), len(chunks)
 
     def show_banner(self):
@@ -98,6 +120,8 @@ class VectorDBApp:
         question = command
 
         if command.startswith("search:"):
+            # 支持这种写法：
+            # search:source=rag_notes.txt 什么是 RAG？
             prefix, rest = command.split(" ", 1) if " " in command else (command, "")
             filter_part = prefix[len("search:"):]
             if "=" in filter_part:
@@ -116,6 +140,7 @@ class VectorDBApp:
 
         self.vector_store.load()
         if not self.vector_store.records:
+            # 如果磁盘上没有保存过向量库，就自动构建一次索引。
             count_docs, count_chunks = self.build_index()
             console.print(f"[dim]已自动构建索引：{count_docs} 份文档，{count_chunks} 个文本块[/dim]")
 
@@ -159,6 +184,7 @@ class VectorDBApp:
                     console.print("请输入搜索问题，例如：search 什么是 RAG？", style="yellow")
                     continue
 
+                # 执行语义搜索，并打印格式化结果。
                 results = self.search_demo.search(question, metadata_filter=metadata_filter)
                 console.print(self.search_demo.format_results(results))
                 continue
@@ -168,4 +194,3 @@ class VectorDBApp:
 
 if __name__ == "__main__":
     VectorDBApp().run()
-

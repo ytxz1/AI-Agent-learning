@@ -22,14 +22,17 @@ def extract_terms(text: str) -> list[str]:
     - 中文则尽量提取连续汉字片段，并附带少量二元词组
     """
     lowered = text.lower()
+    # 英文和数字按单词提取。
     english_terms = re.findall(r"[a-zA-Z0-9_]+", lowered)
+    # 中文提取连续汉字片段。
     cjk_blocks = re.findall(r"[\u4e00-\u9fff]{2,}", text)
 
     terms: list[str] = []
     terms.extend(english_terms)
     terms.extend(cjk_blocks)
 
-    # 为中文片段补一些二元词组，增强查询命中率
+    # 为中文片段补一些二元词组，增强查询命中率。
+    # 例如“上下文拼接”会补出“上下”“下文”“文拼”“拼接”。
     for block in cjk_blocks:
         if len(block) >= 2:
             terms.extend([block[i : i + 2] for i in range(len(block) - 1)])
@@ -39,12 +42,17 @@ def extract_terms(text: str) -> list[str]:
 
 def build_document_profile(text: str) -> Counter:
     """为一段文本生成词项统计。"""
+    # Counter 会统计每个词项出现次数，这就是简化版文档画像。
     return Counter(extract_terms(text))
 
 
 @dataclass
 class RetrievalResult:
-    """单条检索结果。"""
+    """单条检索结果。
+
+    chunk：命中的文本块。
+    score：相关性分数，越高越靠前。
+    """
 
     chunk: DocumentItem
     score: float
@@ -61,8 +69,11 @@ class SimpleRetriever:
     """
 
     def __init__(self, chunks: Iterable[DocumentItem]):
+        # 保存全部 chunk。
         self.chunks = list(chunks)
+        # 为每个 chunk 建立词项画像。
         self.chunk_profiles = [build_document_profile(chunk.page_content) for chunk in self.chunks]
+        # 统计每个词项出现在多少个 chunk 中，用于计算 idf。
         self.document_frequency = self._build_document_frequency()
         self.total_documents = max(1, len(self.chunks))
 
@@ -86,12 +97,14 @@ class SimpleRetriever:
             if doc_tf == 0:
                 continue
             df = self.document_frequency.get(term, 1)
+            # idf 越高，说明这个词越少见，区分度越强。
             idf = math.log((self.total_documents + 1) / (df + 1)) + 1
             score += q_tf * doc_tf * idf
         return score
 
     def retrieve(self, query: str, top_k: int = 3) -> list[RetrievalResult]:
         """返回 top-k 检索结果。"""
+        # 先把用户问题也拆成词项。
         query_terms = extract_terms(query)
         scored: list[RetrievalResult] = []
         for chunk, profile in zip(self.chunks, self.chunk_profiles):
@@ -99,11 +112,12 @@ class SimpleRetriever:
             if score > 0:
                 scored.append(RetrievalResult(chunk=chunk, score=score))
 
+        # 分数从高到低排序。
         scored.sort(key=lambda item: item.score, reverse=True)
         if scored:
             return scored[:top_k]
 
-        # 如果没有任何显式命中，就返回前几个 chunk 做兜底
+        # 如果没有任何显式命中，就返回前几个 chunk 做兜底。
         return [RetrievalResult(chunk=chunk, score=0.0) for chunk in self.chunks[:top_k]]
 
 
@@ -112,10 +126,10 @@ def format_retrieval_summary(results: Iterable[RetrievalResult]) -> str:
     lines = []
     for index, result in enumerate(results, 1):
         chunk = result.chunk
+        # 把 chunk 内容压缩成摘要，方便终端展示。
         text = " ".join(chunk.page_content.split())
         snippet = text[:180] + ("..." if len(text) > 180 else "")
         lines.append(
             f"[{index}] score={result.score:.4f} | {chunk.metadata.get('file_name', 'unknown')} | chunk {chunk.metadata.get('chunk_index', 0)+1}: {snippet}"
         )
     return "\n".join(lines)
-

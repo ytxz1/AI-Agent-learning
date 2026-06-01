@@ -23,11 +23,13 @@ except Exception:  # pragma: no cover
 
 def _extract_json(text: str) -> dict:
     """尽量从模型输出中提取 JSON。"""
+    # 情况 1：模型直接输出纯 JSON。
     try:
         return json.loads(text)
     except Exception:
         pass
 
+    # 情况 2：模型把 JSON 放在 ```json 代码块里。
     code_block = re.search(r"```json\s*(.*?)\s*```", text, re.S)
     if code_block:
         try:
@@ -35,6 +37,7 @@ def _extract_json(text: str) -> dict:
         except Exception:
             pass
 
+    # 情况 3：模型输出里混入解释，尝试截取 JSON 主体。
     start = text.find("{")
     end = text.rfind("}")
     if start != -1 and end != -1 and end > start:
@@ -50,6 +53,7 @@ class ChangeSetBuilder:
     """把计划转成文件变更草案。"""
 
     def __init__(self):
+        # 有 API Key 时优先在线生成代码草案，否则使用本地兜底。
         self.api_enabled = bool(OPENAI_API_KEY and ChatOpenAI is not None)
         self.llm = None
         if self.api_enabled:
@@ -61,6 +65,7 @@ class ChangeSetBuilder:
                     temperature=TEMPERATURE,
                 )
             except Exception:
+                # 初始化失败时回退本地模式。
                 self.api_enabled = False
                 self.llm = None
 
@@ -88,6 +93,7 @@ class ChangeSetBuilder:
         }
 
     def _build_prompt(self, request: str, plan: dict, workspace_excerpt: str, focus_files: Iterable[str] | None = None) -> str:
+        """构建给在线模型的代码草案提示词。"""
         files_text = "\n".join(f"- {item}" for item in (focus_files or [])) or "- 无"
         return (
             "你是一个 Coding Agent 的代码草案生成器。请根据请求、计划和代码上下文，输出严格 JSON。\n"
@@ -110,6 +116,7 @@ class ChangeSetBuilder:
             return self._local_changes(request, plan, focus_files)
 
         try:
+            # 在线模式：让模型输出严格 JSON，然后解析成 change set。
             response = self.llm.invoke([HumanMessage(content=self._build_prompt(request, plan, workspace_excerpt, focus_files))])
             raw_text = getattr(response, "content", str(response))
             data = _extract_json(raw_text)
@@ -117,5 +124,5 @@ class ChangeSetBuilder:
             data.setdefault("mode", "code")
             return data
         except Exception:
+            # 在线失败时回退本地草案，保证流程不断。
             return self._local_changes(request, plan, focus_files)
-

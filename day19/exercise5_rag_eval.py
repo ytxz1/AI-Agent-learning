@@ -1,5 +1,5 @@
 """
-Day 12 - 练习 5（综合）：RAG 效果评估
+Day 19 - 练习 5（综合）：RAG 效果评估
 
 任务：对比不同 RAG 配置的效果，找到最优参数。
 
@@ -27,7 +27,7 @@ from rich.panel import Panel
 console = Console()
 
 console.print("=" * 60, style="bold blue")
-console.print("Day 12 - 练习 5：RAG 效果评估", style="bold blue")
+console.print("Day 19 - 练习 5：RAG 效果评估", style="bold blue")
 console.print("=" * 60, style="bold blue")
 
 current_dir = os.path.dirname(os.path.abspath(__file__))

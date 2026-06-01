@@ -1,5 +1,5 @@
 """
-Day 12 - 文档加载器：读取各种格式的文档
+Day 19 - 项目 2：RAG 问答系统 - 文档加载器
 
 本示例演示如何使用 LangChain 加载各种格式的文档：
 1. TextLoader - 加载纯文本文件
@@ -24,7 +24,7 @@ from rich.table import Table
 console = Console()
 
 console.print("=" * 60, style="bold blue")
-console.print("Day 12 - 文档加载器", style="bold blue")
+console.print("Day 19 - 文档加载器", style="bold blue")
 console.print("=" * 60, style="bold blue")
 
 # 获取当前目录

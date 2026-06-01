@@ -1,5 +1,5 @@
 """
-Day 12 - 综合实践：交互式 RAG 文档问答助手
+Day 19 - 项目 2：交互式 RAG 文档问答助手
 
 整合所有 RAG 知识，构建一个完整的文档问答系统。
 运行方式：python main.py
@@ -15,7 +15,16 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-from config import OPENAI_API_KEY, OPENAI_BASE_URL, MODEL_NAME, EMBEDDING_MODEL
+from config import (
+    CHUNK_OVERLAP,
+    CHUNK_SIZE,
+    EMBEDDING_MODEL,
+    MODEL_NAME,
+    OPENAI_API_KEY,
+    OPENAI_BASE_URL,
+    TEMPERATURE,
+    TOP_K,
+)
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -23,7 +32,7 @@ from rich.table import Table
 console = Console()
 
 console.print("=" * 60, style="bold blue")
-console.print("Day 12 - RAG 文档问答助手", style="bold blue")
+console.print("Day 19 - RAG 文档问答助手", style="bold blue")
 console.print("=" * 60, style="bold blue")
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -34,26 +43,30 @@ docs_dir = os.path.join(current_dir, "documents")
 # ============================================================
 console.print("\n[bold cyan]正在初始化 RAG 系统...[/bold cyan]")
 
-# 加载文档
+# 1. 加载文档。
+# DirectoryLoader 会扫描 documents/ 下的 txt 文件，并用 TextLoader 读取内容。
 dir_loader = DirectoryLoader(docs_dir, glob="*.txt", loader_cls=TextLoader,
                               loader_kwargs={"encoding": "utf-8"})
 docs = dir_loader.load()
 console.print(f"  加载了 {len(docs)} 个文档", style="green")
 
-# 分割文档
-splitter = RecursiveCharacterTextSplitter(chunk_size=200, chunk_overlap=50)
+# 2. 分割文档。
+# chunk_size 和 chunk_overlap 来自 config.py，方便你后续调参。
+splitter = RecursiveCharacterTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
 split_docs = splitter.split_documents(docs)
 console.print(f"  分割为 {len(split_docs)} 个文本块", style="green")
 
 try:
-    # 创建 Embedding
+    # 3. 创建 Embedding 模型。
+    # 它负责把文档块和用户问题转换成向量。
     embeddings = OpenAIEmbeddings(
         model=EMBEDDING_MODEL,
         openai_api_key=OPENAI_API_KEY,
         openai_api_base=OPENAI_BASE_URL,
     )
 
-    # 创建向量数据库
+    # 4. 创建或加载 Chroma 向量数据库。
+    # 如果 chroma_db 已存在，就复用旧索引；否则重新从文档创建。
     persist_dir = os.path.join(current_dir, "chroma_db")
     if os.path.exists(persist_dir):
         vectorstore = Chroma(persist_directory=persist_dir, embedding_function=embeddings)
@@ -62,18 +75,21 @@ try:
         vectorstore = Chroma.from_documents(split_docs, embeddings, persist_directory=persist_dir)
         console.print("  已创建新的向量数据库", style="green")
 
-    # 创建检索器
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+    # 5. 创建检索器。
+    # TOP_K 控制每次检索返回多少个相关文本块。
+    retriever = vectorstore.as_retriever(search_kwargs={"k": TOP_K})
 
-    # 创建 LLM
+    # 6. 创建聊天模型。
+    # 模型会根据检索到的上下文生成最终回答。
     llm = ChatOpenAI(
         api_key=OPENAI_API_KEY,
         base_url=OPENAI_BASE_URL,
         model=MODEL_NAME,
-        temperature=0.7,
+        temperature=TEMPERATURE,
     )
 
-    # RAG 提示词
+    # 7. RAG 提示词。
+    # 这里明确要求模型“根据上下文回答”，减少模型乱编。
     rag_prompt = ChatPromptTemplate.from_template(
         "你是一个基于文档的问答助手。请根据以下检索到的上下文来回答问题。\n"
         "如果上下文中没有相关信息，请说明你不确定。回答要简洁准确。\n\n"
@@ -83,9 +99,11 @@ try:
     )
 
     def format_docs(docs):
+        """把检索到的 Document 列表拼接成 prompt 中的 context。"""
         return "\n\n".join(doc.page_content for doc in docs)
 
-    # RAG Chain
+    # 8. RAG Chain。
+    # 输入问题后，会先检索 context，再把 question 和 context 交给模型。
     rag_chain = (
         {"context": retriever | format_docs, "question": RunnablePassthrough()}
         | rag_prompt
@@ -99,7 +117,7 @@ try:
     # 2. 交互式问答
     # ============================================================
     def show_menu():
-        table = Table(title="Day 12 - RAG 文档问答助手", show_header=True)
+        table = Table(title="Day 19 - RAG 文档问答助手", show_header=True)
         table.add_column("命令", style="green", width=12)
         table.add_column("说明", style="white")
         table.add_row("直接输入", "基于文档提问")
@@ -122,7 +140,10 @@ try:
             console.print(f"  {i}. {ex}", style="yellow")
 
     def search_only(query):
-        """只检索文档，不调用 LLM"""
+        """只检索文档，不调用 LLM。
+
+        这个命令适合调试 RAG：先确认检索结果对不对，再看模型回答。
+        """
         results = retriever.invoke(query)
         console.print(f"\n检索到 {len(results)} 个相关文档：", style="green")
         for i, doc in enumerate(results):
@@ -131,7 +152,7 @@ try:
             console.print(f"      {doc.page_content[:150]}...", style="white")
 
     def show_docs():
-        """显示已加载的文档"""
+        """显示已加载的文档。"""
         console.print("\n[bold cyan]已加载的文档：[/bold cyan]")
         for doc in docs:
             source = os.path.basename(doc.metadata.get("source", "unknown"))
@@ -139,7 +160,7 @@ try:
             console.print(f"  - {source}（{chars} 字符）", style="green")
 
     console.print(Panel.fit(
-        "Day 12 - RAG 文档问答助手\n"
+        "Day 19 - RAG 文档问答助手\n"
         "基于文档进行智能问答，输入 example 查看示例",
         style="bold green"
     ))

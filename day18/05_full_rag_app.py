@@ -1,10 +1,15 @@
-"""Day 18 - 完整演示：RAG 检索链。"""
+"""Day 18 - 完整演示：RAG 检索链。
+
+这个文件是 Day 18 的完整交互应用。
+它把文档加载、切分、检索、上下文拼接和最终回答串成一个可运行流程。
+"""
 
 from __future__ import annotations
 
 import os
 import sys
 
+# 保证直接运行当前文件时，可以导入 config 和 modules。
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from rich.console import Console
@@ -21,6 +26,7 @@ class RAGApp:
     """命令行版 RAG 检索链应用。"""
 
     def __init__(self):
+        # RAGPipeline 是整条检索链的核心封装。
         self.pipeline = RAGPipeline(
             base_dir=os.path.dirname(os.path.abspath(__file__)),
             docs_dir=DOCS_DIR,
@@ -29,9 +35,12 @@ class RAGApp:
             top_k=TOP_K,
             max_context_chars=MAX_CONTEXT_CHARS,
         )
+
+        # 记录是否已经完成加载和切分。
         self.loaded = False
 
     def show_welcome(self):
+        """显示欢迎信息。"""
         console.print(
             Panel.fit(
                 "[bold]Day 18 - RAG 检索链[/bold]\n"
@@ -41,6 +50,7 @@ class RAGApp:
         )
 
     def show_menu(self):
+        """显示命令菜单。"""
         console.print("\n可用命令：")
         console.print("  load    - 加载并切分文档")
         console.print("  docs    - 查看文档预览")
@@ -51,12 +61,14 @@ class RAGApp:
         console.print("  q       - 退出")
 
     def load(self):
+        """加载文档并切分成 chunk。"""
         self.pipeline.load()
         self.pipeline.split()
         self.loaded = True
         console.print("文档加载与切分完成。", style="green")
 
     def show_docs(self):
+        """展示文档统计和预览。"""
         if not self.loaded:
             self.load()
         summary = self.pipeline.document_summary()
@@ -68,6 +80,7 @@ class RAGApp:
             console.print(line, style="yellow")
 
     def show_chunks(self):
+        """展示 chunk 统计和预览。"""
         if not self.loaded:
             self.load()
         summary = self.pipeline.chunk_summary()
@@ -78,6 +91,7 @@ class RAGApp:
             console.print(line, style="yellow")
 
     def show_stats(self):
+        """展示当前 RAG 检索链状态。"""
         if not self.loaded:
             self.load()
         console.print("\n[bold cyan]系统状态：[/bold cyan]")
@@ -89,10 +103,14 @@ class RAGApp:
         console.print(f"  在线模型：{api_status}", style="green")
 
     def ask_once(self):
+        """让用户输入一个问题，并展示完整检索链输出。"""
         if not self.loaded:
             self.load()
         question = Prompt.ask("\n请输入你的问题")
         result = self.pipeline.ask(question)
+
+        # 先看检索摘要，再看上下文，最后看回答。
+        # 这样更容易判断回答质量是不是被检索结果影响了。
         console.print("\n[bold cyan]检索结果摘要：[/bold cyan]")
         console.print(result["retrieval_summary"], style="yellow")
         console.print("\n[bold cyan]拼接上下文：[/bold cyan]")
@@ -102,6 +120,7 @@ class RAGApp:
         console.print(f"\n[dim]回答模式：{'API 在线生成' if result.get('api_enabled') else '本地兜底'}[/dim]")
 
     def demo(self):
+        """运行内置示例问题。"""
         if not self.loaded:
             self.load()
         demo_questions = [
@@ -115,6 +134,7 @@ class RAGApp:
             console.print(result["answer"], style="magenta")
 
     def run(self):
+        """运行命令行主循环。"""
         self.show_welcome()
         self.show_menu()
         while True:
@@ -144,6 +164,7 @@ class RAGApp:
 
 
 def main():
+    """程序入口函数。"""
     app = RAGApp()
     app.run()
 

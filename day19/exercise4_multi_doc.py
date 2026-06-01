@@ -1,5 +1,5 @@
 """
-Day 12 - 练习 4（挑战）：多文档智能问答系统
+Day 19 - 练习 4（挑战）：多文档智能问答系统
 
 任务：支持多种来源的文档问答，带来源引用。
 
@@ -27,7 +27,7 @@ from rich.table import Table
 console = Console()
 
 console.print("=" * 60, style="bold blue")
-console.print("Day 12 - 练习 4：多文档智能问答", style="bold blue")
+console.print("Day 19 - 练习 4：多文档智能问答", style="bold blue")
 console.print("=" * 60, style="bold blue")
 
 current_dir = os.path.dirname(os.path.abspath(__file__))

@@ -1,5 +1,5 @@
 """
-Day 12 - RAG Chain：将检索和生成整合
+Day 19 - 项目 2：RAG 问答系统 - RAG Chain
 
 本示例演示完整的 RAG 流程：
 1. RAG 的工作原理
@@ -29,7 +29,7 @@ from rich.panel import Panel
 console = Console()
 
 console.print("=" * 60, style="bold blue")
-console.print("Day 12 - RAG Chain", style="bold blue")
+console.print("Day 19 - RAG Chain", style="bold blue")
 console.print("=" * 60, style="bold blue")
 
 # ============================================================

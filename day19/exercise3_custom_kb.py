@@ -1,5 +1,5 @@
 """
-Day 12 - 练习 3（进阶）：构建自定义知识库
+Day 19 - 练习 3（进阶）：构建自定义知识库
 
 任务：创建自己的知识库文件，构建 RAG 问答系统。
 
@@ -27,7 +27,7 @@ from rich.panel import Panel
 console = Console()
 
 console.print("=" * 60, style="bold blue")
-console.print("Day 12 - 练习 3：构建自定义知识库", style="bold blue")
+console.print("Day 19 - 练习 3：构建自定义知识库", style="bold blue")
 console.print("=" * 60, style="bold blue")
 
 # [新增] 1. 创建自定义知识库

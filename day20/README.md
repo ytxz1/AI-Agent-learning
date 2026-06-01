@@ -1,625 +1,836 @@
-# Day 20 - Coding Agent
+# Day 20 - 项目 3：Coding Agent
 
-> 目标：理解一个 Coding Agent 是怎样“读代码、出计划、生成草案、给验证建议”的。  
-> 这一节不只是聊天，也不只是工具调用，而是把“看代码”和“改代码”串成一个完整的工作流。
-
----
-
-## 1. Day 20 的定位
-
-Day 20 是第三周里非常关键的一个项目日，主题是 **Coding Agent**。
-
-在前面的学习里，你已经有了：
-
-- LLM 基础
-- Memory
-- Tools
-- Agent
-- 输出解析
-- 文档加载
-- 切分
-- 检索链
-
-Day 20 要做的，是把这些能力往“真实开发协作”推进一步。
-
-一个 Coding Agent 不应该只是“回答你问题”，而应该能：
-
-1. 读懂需求。
-2. 扫描工作区。
-3. 找到可能受影响的文件。
-4. 生成修改计划。
-5. 生成代码草案。
-6. 给出验证建议。
-7. 让用户先审阅，再决定是否真正落盘。
+> Day 20 的任务：理解并实现一个教学版 Coding Agent。
+>
+> 这一节的重点不是让 Agent 直接大规模改文件，而是学习一个更安全、更工程化的流程：
+>
+> ```text
+> 需求 -> 扫描工作区 -> 查看文件 -> 生成计划 -> 生成代码草案 -> 保存结果 -> 人工审阅
+> ```
 
 ---
 
-## 2. 本日学习目标
+## 1. 今天你要学会什么
 
-完成 Day 20 后，你应该能够：
+Day 20 对应学习计划表里的任务是：`项目 3：Coding Agent`。
 
-1. 说清楚 Coding Agent 和普通聊天助手的区别。
-2. 理解为什么 Coding Agent 需要工作区扫描能力。
-3. 理解为什么要先生成计划，再生成代码草案。
-4. 知道怎样把“需求”拆成“可执行步骤”。
-5. 知道怎么把“代码修改建议”结构化成 JSON。
-6. 知道如何设计更安全的代码修改流程。
+完成这一天后，你应该能理解：
 
----
-
-## 3. 项目整体说明
-
-这个 Day 20 项目是一个教学版 Coding Agent。
-
-它的核心不是“自动替你大规模改整个项目”，而是：
-
-- 先扫描当前工作区
-- 再分析需求
-- 再生成结构化修改计划
-- 再生成代码草案
-- 再给验证建议
-
-项目同时支持：
-
-- 在线模型优先
-- 没有 API Key 时本地兜底
-- 命令行交互
-- 文件预览
-- 计划生成
-- 代码草案生成
-- 草案保存到 `output/`
+1. Coding Agent 和普通聊天助手有什么区别。
+2. 为什么 Coding Agent 要先扫描工作区。
+3. 为什么不能一上来就直接修改文件。
+4. 如何把自然语言需求拆成结构化计划。
+5. 如何把计划转成可审阅的代码草案。
+6. 什么是 change set。
+7. 为什么要限制文件读取在工作区内。
+8. 在线模型和本地兜底分别做什么。
+9. 如何保存最近一次计划和草案。
+10. 一个安全的 Coding Agent 工作流应该长什么样。
 
 ---
 
-## 4. 目录结构总览
+## 2. 项目结构
 
 ```text
 day20/
 ├── README.md
-├── main.py
-├── config.py
 ├── requirements.txt
 ├── .env.example
-├── documents/
-│   ├── 01_coding_agent_overview.txt
-│   ├── 02_safety_rules.md
-│   └── 03_prompt_guidelines.txt
-├── modules/
-│   ├── __init__.py
-│   ├── workspace.py
-│   ├── planner.py
-│   ├── coder.py
-│   └── coding_agent.py
+├── config.py
+├── main.py
 ├── 01_scan_workspace.py
 ├── 02_build_plan.py
 ├── 03_generate_change_set.py
 ├── 04_file_inspect.py
-└── 05_full_coding_agent.py
+├── 05_full_coding_agent.py
+├── documents/
+│   ├── 01_coding_agent_overview.txt
+│   ├── 02_safety_rules.md
+│   └── 03_prompt_guidelines.txt
+└── modules/
+    ├── __init__.py
+    ├── workspace.py
+    ├── planner.py
+    ├── coder.py
+    └── coding_agent.py
 ```
 
-下面我按文件详细解释。
+Day 20 的核心链路是：
 
----
-
-## 5. 核心文件详细说明
-
-### 5.1 `main.py`
-
-文件路径：
-- [day20/main.py](/D:/vscode项目/学习/day20/main.py)
-
-#### 作用
-
-这是整个项目的统一入口。
-
-你运行：
-
-```bash
-python main.py
+```text
+workspace.py
+  -> planner.py
+  -> coder.py
+  -> coding_agent.py
+  -> 05_full_coding_agent.py
 ```
 
-实际上会启动 `05_full_coding_agent.py` 的交互界面。
-
-#### 为什么单独保留入口
-
-这样做的好处是：
-
-- 用户只需要记住一个启动方式
-- 以后如果想换成 Web 或 GUI，入口可以单独替换
-- 主逻辑仍然保留在模块里，结构更清晰
-
 ---
 
-### 5.2 `config.py`
+## 3. 运行方式
 
-文件路径：
-- [day20/config.py](/D:/vscode项目/学习/day20/config.py)
+### 3.1 安装依赖
 
-#### 作用
+在 `day20` 文件夹下运行：
 
-这里集中管理 Coding Agent 所需的配置。
-
-包括：
-
-- 工作区目录
-- API Key
-- 模型名称
-- 温度
-- 文件预览长度
-- 默认展示数量
-
-#### 为什么它重要
-
-Coding Agent 本身会涉及很多“调参”：
-
-- 模型选择
-- 提示词长度
-- 文件预览条数
-- 预览字数
-
-这些都适合放在配置文件里，而不是散落在代码中。
-
----
-
-### 5.3 `requirements.txt`
-
-文件路径：
-- [day20/requirements.txt](/D:/vscode项目/学习/day20/requirements.txt)
-
-#### 作用
-
-记录项目依赖。
-
-安装方式：
-
-```bash
+```powershell
 pip install -r requirements.txt
 ```
 
-#### 依赖说明
+### 3.2 配置环境变量
 
-- `python-dotenv`：读取环境变量
-- `rich`：美化 CLI 输出
-- `langchain-openai`：在线模型调用
-- `langchain-core`：消息、提示词等基础能力
+复制 `.env.example` 为 `.env`：
 
----
-
-### 5.4 `.env.example`
-
-文件路径：
-- [day20/.env.example](/D:/vscode项目/学习/day20/.env.example)
-
-#### 作用
-
-提供默认配置样例。
-
-你可以直接复制成 `.env` 再填写真实值。
-
-#### 包含哪些参数
-
-- `WORKSPACE_DIR`
-- `OPENAI_API_KEY`
-- `OPENAI_BASE_URL`
-- `PLAN_MODEL`
-- `CODE_MODEL`
-- `TEMPERATURE`
-- `MAX_FILES_PREVIEW`
-- `MAX_FILE_PREVIEW_CHARS`
-- `DEFAULT_TOP_N`
-
-#### 为什么要有 API Key
-
-因为 Day 20 的核心是“生成计划”和“生成代码草案”。  
-这些步骤更适合让在线模型来做，因此 API 是这节课里最有价值的能力之一。
-
----
-
-### 5.5 `documents/`
-
-文件路径：
-- [day20/documents/](/D:/vscode项目/学习/day20/documents)
-
-#### 作用
-
-这里放的是关于 Coding Agent 的教学材料。
-
-包括：
-
-- `01_coding_agent_overview.txt`
-- `02_safety_rules.md`
-- `03_prompt_guidelines.txt`
-
-#### 这些文档有什么用
-
-它们帮助你理解：
-
-- Coding Agent 的目标是什么
-- 为什么要加安全规则
-- 怎样给 Agent 下更清楚的指令
-
----
-
-### 5.6 `modules/workspace.py`
-
-文件路径：
-- [day20/modules/workspace.py](/D:/vscode项目/学习/day20/modules/workspace.py)
-
-#### 作用
-
-这个模块负责和工作区打交道。
-
-它主要做：
-
-- 安全定位路径
-- 扫描文件树
-- 读取文件内容
-- 生成文件预览
-- 统计工作区信息
-
-#### 为什么它很重要
-
-Coding Agent 如果看不懂工作区结构，就没法知道该改哪些文件。
-
-所以“先扫描工作区”是第一步。
-
-#### 你应该重点关注什么
-
-- `resolve_path`
-- `list_files`
-- `tree_lines`
-- `read_text`
-- `file_preview`
-- `stats`
-
-这些函数就是“Agent 的眼睛”。
-
----
-
-### 5.7 `modules/planner.py`
-
-文件路径：
-- [day20/modules/planner.py](/D:/vscode项目/学习/day20/modules/planner.py)
-
-#### 作用
-
-这个模块负责把自然语言需求转换成结构化计划。
-
-也就是：
-
-**用户说一句话 -> Agent 输出一份计划**
-
-#### 计划里通常有什么
-
-- `objective`：目标
-- `mode`：当前处理模式
-- `assumptions`：假设前提
-- `steps`：修改步骤
-- `validation`：验证方式
-- `risks`：风险提醒
-
-#### 为什么要先做计划
-
-因为代码修改最怕“直接冲进去改”。
-
-先出计划可以：
-
-- 明确思路
-- 确认范围
-- 减少误改
-- 让用户先审阅
-
-#### 在线和本地的区别
-
-如果配置了 `OPENAI_API_KEY`：
-
-- `planner.py` 会优先调用在线模型生成计划
-
-如果没有：
-
-- 就使用本地规则生成一个保守但可读的计划
-
----
-
-### 5.8 `modules/coder.py`
-
-文件路径：
-- [day20/modules/coder.py](/D:/vscode项目/学习/day20/modules/coder.py)
-
-#### 作用
-
-这个模块负责把计划转成“代码草案”。
-
-它不是直接改文件，而是输出一个结构化 `change set`，方便审阅。
-
-#### change set 通常包含什么
-
-- `objective`
-- `mode`
-- `summary`
-- `files`
-- `tests`
-- `notes`
-
-其中 `files` 里会记录：
-
-- 要改哪个文件
-- 动作是 `create` / `update` / `delete` / `review`
-- 为什么要这么改
-- 草案内容是什么
-
-#### 为什么不直接改文件
-
-因为 Coding Agent 最重要的一点是“可控”。
-
-先输出草案，让人看一遍，会更安全。
-
----
-
-### 5.9 `modules/coding_agent.py`
-
-文件路径：
-- [day20/modules/coding_agent.py](/D:/vscode项目/学习/day20/modules/coding_agent.py)
-
-#### 作用
-
-这是整个项目的中枢。
-
-它把以下几件事串起来：
-
-- 扫描工作区
-- 查看文件
-- 生成计划
-- 生成草案
-- 缓存最后一次结果
-
-#### 为什么它是核心
-
-因为它是“Agent 真正干活的地方”。
-
-其他模块负责具体能力，而这个模块负责把这些能力组合起来。
-
----
-
-### 5.10 `modules/__init__.py`
-
-文件路径：
-- [day20/modules/__init__.py](/D:/vscode项目/学习/day20/modules/__init__.py)
-
-#### 作用
-
-统一导出常用类，让别的模块导入更方便。
-
----
-
-## 6. 练习文件详细说明
-
-### 6.1 `01_scan_workspace.py`
-
-文件路径：
-- [day20/01_scan_workspace.py](/D:/vscode项目/学习/day20/01_scan_workspace.py)
-
-#### 作用
-
-练习工作区扫描。
-
-你会看到：
-
-- 工作区摘要
-- 文件数量
-- 总大小
-- 简化目录树
-
-#### 学习重点
-
-先了解“Agent 要操作的环境长什么样”。
-
----
-
-### 6.2 `02_build_plan.py`
-
-文件路径：
-- [day20/02_build_plan.py](/D:/vscode项目/学习/day20/02_build_plan.py)
-
-#### 作用
-
-练习生成修改计划。
-
-它会根据一个 Coding 需求，输出结构化计划 JSON。
-
-#### 学习重点
-
-让你看到需求如何被拆成步骤。
-
----
-
-### 6.3 `03_generate_change_set.py`
-
-文件路径：
-- [day20/03_generate_change_set.py](/D:/vscode项目/学习/day20/03_generate_change_set.py)
-
-#### 作用
-
-练习生成代码草案。
-
-它会基于计划和代码上下文，输出 file-level 的变更建议。
-
-#### 学习重点
-
-理解“计划”和“真正的代码草案”不是一回事。
-
----
-
-### 6.4 `04_file_inspect.py`
-
-文件路径：
-- [day20/04_file_inspect.py](/D:/vscode项目/学习/day20/04_file_inspect.py)
-
-#### 作用
-
-练习查看文件内容。
-
-这是 Coding Agent 最基础也最重要的能力之一。
-
----
-
-### 6.5 `05_full_coding_agent.py`
-
-文件路径：
-- [day20/05_full_coding_agent.py](/D:/vscode项目/学习/day20/05_full_coding_agent.py)
-
-#### 作用
-
-这是 Day 20 的完整交互式应用。
-
-它支持：
-
-- 扫描工作区
-- 查看文件预览
-- 查看指定文件
-- 生成计划
-- 生成代码草案
-- 执行示例请求
-- 保存最近一次结果
-
-#### 为什么这个文件重要
-
-它把前面的所有模块真正连起来了。
-
-你可以把它当成一个“教学版 Coding Agent 前台”。
-
----
-
-## 7. Day 20 的核心知识点
-
-### 7.1 什么是 Coding Agent
-
-Coding Agent 是一种能帮助你理解、规划、生成和验证代码改动的智能体。
-
-它不是简单聊天，而是“面向开发任务”的智能体。
-
-### 7.2 为什么先计划，再生成代码
-
-因为直接生成代码容易：
-
-- 改动过大
-- 忽略依赖
-- 漏掉验证
-
-先计划可以让整个过程更安全、更可审阅。
-
-### 7.3 为什么要扫描工作区
-
-因为 Coding Agent 不能凭空知道你的项目结构。
-
-它必须先看：
-
-- 有哪些文件
-- 文件大概内容是什么
-- 哪些文件更可能被影响
-
-### 7.4 为什么要生成 change set
-
-因为真正的工程实践中，最好先审查修改方案，再落地修改。
-
-change set 就是“可审阅的代码修改草案”。
-
-### 7.5 在线模型的作用
-
-如果配置了 API Key，在线模型可以帮助：
-
-- 更准确地理解需求
-- 更像人一样拆解任务
-- 生成更自然的代码草案
-
-所以 Day 20 这一节特别适合使用 API。
-
----
-
-## 8. 推荐运行顺序
-
-建议按下面顺序学：
-
-1. `01_scan_workspace.py`
-2. `04_file_inspect.py`
-3. `02_build_plan.py`
-4. `03_generate_change_set.py`
-5. `05_full_coding_agent.py`
-
-这样你会先了解环境，再了解计划，最后了解草案。
-
----
-
-## 9. 如何运行
-
-安装依赖：
-
-```bash
-pip install -r requirements.txt
+```powershell
+copy .env.example .env
 ```
 
-启动主程序：
+可配置内容：
 
-```bash
+```env
+WORKSPACE_DIR=.
+OPENAI_API_KEY=
+OPENAI_BASE_URL=https://api.deepseek.com
+PLAN_MODEL=deepseek-chat
+CODE_MODEL=deepseek-chat
+TEMPERATURE=0.2
+MAX_FILES_PREVIEW=5
+MAX_FILE_PREVIEW_CHARS=220
+DEFAULT_TOP_N=5
+```
+
+Day 20 有 API Key 时效果更好。
+
+如果没有 API Key，也可以运行，因为项目提供本地兜底计划和本地草案。
+
+### 3.3 运行完整应用
+
+```powershell
 python main.py
 ```
 
-或者单独运行练习脚本：
+进入程序后可以输入：
 
-```bash
+```text
+scan
+files
+inspect
+plan
+draft
+demo
+save
+q
+```
+
+### 3.4 分步骤运行练习脚本
+
+```powershell
 python 01_scan_workspace.py
+python 04_file_inspect.py
+python 02_build_plan.py
+python 03_generate_change_set.py
 python 05_full_coding_agent.py
 ```
 
+建议第一次学习时按这个顺序运行。
+
 ---
 
-## 10. 常见问题
+## 4. Coding Agent 核心原理
 
-### 10.1 如果没有 API Key，可以运行吗？
+### 4.1 什么是 Coding Agent
 
-可以。
+Coding Agent 是面向开发任务的智能体。
 
-项目里已经做了本地兜底：
+它不只是回答问题，还要能：
 
-- 计划会用规则生成
-- 草案也会用保守模板生成
+1. 理解需求。
+2. 查看项目结构。
+3. 读取相关文件。
+4. 生成修改计划。
+5. 生成代码草案。
+6. 给出测试建议。
+7. 让用户审阅后再决定是否落地。
 
-但如果你想体验更强的 Coding Agent 效果，建议配置 API。
+### 4.2 为什么要先扫描工作区
 
-### 10.2 为什么不直接修改真实文件？
+如果 Agent 不知道项目结构，就很容易乱猜。
 
-因为这是教学版项目。
+扫描工作区可以让 Agent 知道：
 
-先生成草案更安全，也更适合学习流程。
+1. 有哪些代码文件。
+2. 哪些文件可能是入口。
+3. 项目有没有 README。
+4. 配置文件在哪里。
+5. 需要优先关注哪些文件。
 
-### 10.3 为什么要限制工作区范围？
+### 4.3 为什么要先计划，再写代码
 
-因为 Coding Agent 不能随便去改工作区外的文件。
+直接生成代码有风险。
+
+常见问题：
+
+1. 改错文件。
+2. 改动范围过大。
+3. 漏掉验证步骤。
+4. 破坏已有功能。
+
+先生成计划可以让修改过程更可控。
+
+### 4.4 什么是 change set
+
+change set 是结构化代码修改草案。
+
+它通常包含：
+
+```text
+objective
+mode
+summary
+files
+tests
+notes
+```
+
+其中 `files` 会说明：
+
+1. 要处理哪个文件。
+2. 动作是 create / update / delete / review。
+3. 为什么要改。
+4. 草案内容是什么。
+
+---
+
+## 5. 每个文件的详细解释
+
+### 5.1 `config.py`
+
+这个文件是 Day 20 的配置中心。
+
+主要配置：
+
+1. `WORKSPACE_DIR`：Coding Agent 要扫描的工作区。
+2. `OPENAI_API_KEY`：在线模型 API Key。
+3. `OPENAI_BASE_URL`：OpenAI 兼容接口地址。
+4. `PLAN_MODEL`：生成计划用的模型。
+5. `CODE_MODEL`：生成代码草案用的模型。
+6. `TEMPERATURE`：模型随机性。
+7. `MAX_FILES_PREVIEW`：最多预览几个文件。
+8. `MAX_FILE_PREVIEW_CHARS`：每个文件最多预览多少字符。
+9. `DEFAULT_TOP_N`：默认展示数量。
+
+为什么要限制预览？
+
+因为 Coding Agent 不能把整个项目一次性塞给模型。
+
+需要先给模型一个合理的摘要。
+
+---
+
+### 5.2 `modules/workspace.py`
+
+这个文件负责工作区操作。
+
+核心结构：
+
+```python
+WorkspaceFile
+```
+
+保存：
+
+1. 文件路径。
+2. 文件大小。
+3. 文件预览。
+
+核心类：
+
+```python
+WorkspaceInspector
+```
+
+常用方法：
+
+1. `resolve_path()`：把相对路径转换成安全绝对路径。
+2. `list_files()`：列出常见代码和文档文件。
+3. `tree_lines()`：生成简化目录树。
+4. `read_text()`：读取文件文本。
+5. `file_preview()`：生成单文件预览。
+6. `stats()`：统计工作区信息。
+7. `summarize_files()`：生成多文件预览。
+
+最重要的安全点：
+
+```text
+读取文件前必须确认路径没有逃出工作区。
+```
+
+---
+
+### 5.3 `modules/planner.py`
+
+这个文件负责生成修改计划。
+
+核心类：
+
+```python
+CodingPlanner
+```
+
+它有两种模式：
+
+1. 在线模式：调用模型生成结构化计划。
+2. 本地模式：根据关键词生成保守计划。
+
+计划通常包含：
+
+```text
+objective
+mode
+assumptions
+steps
+validation
+risks
+workspace_summary
+```
+
+为什么计划要是 JSON？
+
+因为结构化输出更方便：
+
+1. 展示。
+2. 保存。
+3. 后续生成代码草案。
+4. 自动化处理。
+
+---
+
+### 5.4 `modules/coder.py`
+
+这个文件负责生成代码草案。
+
+核心类：
+
+```python
+ChangeSetBuilder
+```
+
+它会根据：
+
+1. 用户需求。
+2. 修改计划。
+3. 工作区文件预览。
+4. 重点文件列表。
+
+生成一个 change set。
+
+注意：
+
+```text
+它不会直接修改真实文件。
+```
+
+这正是教学版 Coding Agent 的安全设计。
+
+---
+
+### 5.5 `modules/coding_agent.py`
+
+这是整个项目的中枢模块。
+
+核心类：
+
+```python
+CodingAgent
+```
+
+它组合了：
+
+1. `WorkspaceInspector`
+2. `CodingPlanner`
+3. `ChangeSetBuilder`
+
+常用方法：
+
+1. `workspace_summary()`
+2. `inspect()`
+3. `scan_tree()`
+4. `generate_plan()`
+5. `generate_change_set()`
+6. `pretty_json()`
+
+你可以把它理解成：
+
+```text
+workspace 是眼睛
+planner 是大脑里的计划器
+coder 是草案生成器
+CodingAgent 是调度中心
+```
+
+---
+
+### 5.6 `01_scan_workspace.py`
+
+这是练习 1 文件。
+
+作用：
+
+```text
+扫描工作区，查看项目结构和文件摘要。
+```
+
+重点理解：
+
+```python
+agent.workspace_summary()
+agent.scan_tree()
+```
+
+---
+
+### 5.7 `02_build_plan.py`
+
+这是练习 2 文件。
+
+作用：
+
+```text
+根据一个需求生成结构化修改计划。
+```
+
+示例需求：
+
+```text
+给这个项目增加一个 help 命令，并保留现有菜单结构
+```
+
+重点理解：
+
+```python
+agent.generate_plan(...)
+```
+
+---
+
+### 5.8 `03_generate_change_set.py`
+
+这是练习 3 文件。
+
+作用：
+
+```text
+根据需求和计划生成代码草案。
+```
+
+重点理解：
+
+```python
+agent.generate_change_set(...)
+```
+
+它只生成草案，不直接改文件。
+
+---
+
+### 5.9 `04_file_inspect.py`
+
+这是练习 4 文件。
+
+作用：
+
+```text
+安全查看指定文件内容。
+```
+
+重点理解：
+
+```python
+agent.inspect("main.py")
+```
+
+---
+
+### 5.10 `05_full_coding_agent.py`
+
+这是完整交互应用。
+
+支持命令：
+
+```text
+scan
+files
+inspect
+plan
+draft
+demo
+save
+q
+```
+
+其中：
+
+`plan` 生成计划。
+
+`draft` 生成代码草案。
+
+`save` 把最近一次计划和草案保存到 `output/`。
+
+---
+
+## 6. 练习题专区
+
+下面是 Day 20 的完整练习题。
+
+以后每天的 README 都会按这个格式写：
+
+```text
+练习题编号
+  -> 练习目标
+  -> 题目要求
+  -> 操作提示
+  -> 参考答案
+  -> 如何运行
+  -> 你应该观察什么结果
+```
+
+---
+
+### 6.1 练习 1：扫描工作区
+
+文件：
+
+```text
+01_scan_workspace.py
+```
+
+练习目标：
+
+理解 Coding Agent 如何获得项目结构。
+
+题目要求：
+
+1. 创建 `CodingAgent`。
+2. 调用 `workspace_summary()`。
+3. 调用 `scan_tree()`。
+4. 打印 JSON 摘要和目录树。
+
+参考答案：
+
+答案已经写在 `01_scan_workspace.py` 中。
+
+如何运行：
+
+```powershell
+python 01_scan_workspace.py
+```
+
+你应该观察到：
+
+1. 工作区根目录。
+2. 文件数量。
+3. 总大小。
+4. 部分文件预览。
+5. 简化目录树。
+
+---
+
+### 6.2 练习 2：生成修改计划
+
+文件：
+
+```text
+02_build_plan.py
+```
+
+练习目标：
+
+理解自然语言需求如何变成结构化计划。
+
+题目要求：
+
+1. 创建 `CodingAgent`。
+2. 输入一个功能需求。
+3. 指定重点文件。
+4. 输出 JSON 计划。
+
+参考答案：
+
+答案已经写在 `02_build_plan.py` 中。
+
+如何运行：
+
+```powershell
+python 02_build_plan.py
+```
+
+你应该观察到：
+
+1. `objective` 表示目标。
+2. `steps` 表示拆解步骤。
+3. `validation` 表示验证建议。
+4. `risks` 表示风险提醒。
+
+---
+
+### 6.3 练习 3：生成代码草案
+
+文件：
+
+```text
+03_generate_change_set.py
+```
+
+练习目标：
+
+理解计划如何进一步变成可审阅的代码草案。
+
+题目要求：
+
+1. 创建 `CodingAgent`。
+2. 输入同一个功能需求。
+3. 调用 `generate_change_set()`。
+4. 输出 change set JSON。
+
+参考答案：
+
+答案已经写在 `03_generate_change_set.py` 中。
+
+如何运行：
+
+```powershell
+python 03_generate_change_set.py
+```
+
+你应该观察到：
+
+1. `summary` 总结草案。
+2. `files` 说明文件级改动建议。
+3. `tests` 给出验证建议。
+4. 本地模式不会直接修改文件。
+
+---
+
+### 6.4 练习 4：查看文件
+
+文件：
+
+```text
+04_file_inspect.py
+```
+
+练习目标：
+
+理解 Coding Agent 如何安全读取工作区内文件。
+
+题目要求：
+
+1. 创建 `CodingAgent`。
+2. 调用 `inspect("main.py")`。
+3. 输出文件路径、大小和预览。
+
+参考答案：
+
+答案已经写在 `04_file_inspect.py` 中。
+
+如何运行：
+
+```powershell
+python 04_file_inspect.py
+```
+
+你应该观察到：
+
+1. 文件绝对路径。
+2. 文件大小。
+3. 文件前若干字符预览。
+
+---
+
+### 6.5 练习 5：完整 Coding Agent 应用
+
+文件：
+
+```text
+05_full_coding_agent.py
+```
+
+练习目标：
+
+体验完整 Coding Agent 工作流。
+
+题目要求：
+
+1. 启动应用。
+2. 输入 `scan`。
+3. 输入 `files`。
+4. 输入 `inspect`。
+5. 输入 `plan`。
+6. 输入 `draft`。
+7. 输入 `save`。
+8. 输入 `q`。
+
+操作提示：
+
+建议命令顺序：
+
+```text
+scan
+files
+inspect
+plan
+draft
+save
+q
+```
+
+参考答案：
+
+答案已经写在 `05_full_coding_agent.py` 中。
+
+如何运行：
+
+```powershell
+python 05_full_coding_agent.py
+```
+
+或：
+
+```powershell
+python main.py
+```
+
+你应该观察到：
+
+1. 菜单正常显示。
+2. 可以扫描工作区。
+3. 可以查看文件。
+4. 可以生成计划。
+5. 可以生成代码草案。
+6. `save` 后会生成 `output/last_plan.json` 和 `output/last_change_set.json`。
+
+---
+
+## 7. 练习题对应文件答案说明
+
+Day 20 的练习答案已经写进对应代码文件中。
+
+对应关系：
+
+```text
+练习 1 -> 01_scan_workspace.py
+练习 2 -> 02_build_plan.py
+练习 3 -> 03_generate_change_set.py
+练习 4 -> 04_file_inspect.py
+练习 5 -> 05_full_coding_agent.py
+```
+
+这些文件都是完整可运行的参考答案。
+
+---
+
+## 8. API Key 与本地模式说明
+
+Day 20 支持两种模式。
+
+### 8.1 没有 API Key
+
+如果没有配置 `OPENAI_API_KEY`：
+
+1. 工作区扫描正常。
+2. 文件查看正常。
+3. 计划生成使用本地规则。
+4. 代码草案使用本地模板。
+5. 不会产生 API 费用。
+
+### 8.2 有 API Key
+
+如果配置了 `OPENAI_API_KEY`：
+
+1. `CodingPlanner` 会尝试调用在线模型生成计划。
+2. `ChangeSetBuilder` 会尝试调用在线模型生成代码草案。
+3. 输出通常更贴合需求。
+4. 如果在线调用失败，会自动回退本地模式。
+
+---
+
+## 9. 常见问题
+
+### 9.1 为什么不直接修改文件
+
+因为 Day 20 是教学版 Coding Agent。
+
+先输出计划和草案更安全。
+
+真正修改文件前，你应该先审阅：
+
+1. 目标文件是否正确。
+2. 计划是否合理。
+3. 草案是否会破坏现有逻辑。
+4. 验证步骤是否完整。
+
+---
+
+### 9.2 为什么要限制工作区路径
+
+因为 Coding Agent 不能随便读取或修改工作区外文件。
+
+`resolve_path()` 会检查目标路径是否仍在工作区内。
 
 这是安全边界。
 
 ---
 
-## 11. 学习建议
+### 9.3 为什么在线模型输出有时不是 JSON
 
-1. 先搞清楚工作区扫描。
-2. 再学怎么输出计划。
-3. 再学怎么输出草案。
-4. 多改几个请求试试不同的 plan。
-5. 如果配置了 API Key，观察在线和本地模式的区别。
+模型有时会输出解释文字或 Markdown 代码块。
+
+所以 `planner.py` 和 `coder.py` 都写了 `_extract_json()`：
+
+1. 先尝试解析纯 JSON。
+2. 再尝试解析 ```json 代码块。
+3. 最后尝试从文本中截取 JSON 主体。
 
 ---
 
-## 12. 小结
+## 10. 推荐学习顺序
 
-Day 20 是从“会回答问题”走向“会协助开发”的一步。
+建议按这个顺序学习：
 
-你要记住：
+1. 读 `README.md`。
+2. 运行 `python 01_scan_workspace.py`。
+3. 打开 `modules/workspace.py`。
+4. 运行 `python 04_file_inspect.py`。
+5. 运行 `python 02_build_plan.py`。
+6. 打开 `modules/planner.py`。
+7. 运行 `python 03_generate_change_set.py`。
+8. 打开 `modules/coder.py`。
+9. 打开 `modules/coding_agent.py`。
+10. 运行 `python main.py`。
 
-- 工作区扫描是基础
-- 计划生成是中间层
-- 代码草案是结果层
-- 安全审阅是工程实践的关键
+---
 
-如果你把 Day 20 理解透了，后面做真正的 Coding Agent 会容易很多。
+## 11. Day 20 总结
 
+Day 20 的关键词是：
+
+```text
+Coding Agent
+workspace
+inspect
+plan
+change set
+draft
+validation
+safety
+local fallback
+online model
+```
+
+一句话总结：
+
+```text
+Coding Agent 的核心不是“立刻改代码”，而是先看清楚、想清楚、写出可审阅草案，再决定是否落地。
+```
+
+如果你把 Day 20 学明白了，就已经开始接近真实 AI 编程助手的工作方式了。

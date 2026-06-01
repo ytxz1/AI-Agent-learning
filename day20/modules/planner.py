@@ -23,11 +23,13 @@ except Exception:  # pragma: no cover
 
 def _extract_json(text: str) -> dict:
     """尽量从模型输出中提取 JSON。"""
+    # 情况 1：模型直接输出纯 JSON。
     try:
         return json.loads(text)
     except Exception:
         pass
 
+    # 情况 2：模型把 JSON 放在 ```json 代码块里。
     code_block = re.search(r"```json\s*(.*?)\s*```", text, re.S)
     if code_block:
         try:
@@ -35,6 +37,7 @@ def _extract_json(text: str) -> dict:
         except Exception:
             pass
 
+    # 情况 3：模型输出里混入解释，尝试截取第一个 { 到最后一个 }。
     start = text.find("{")
     end = text.rfind("}")
     if start != -1 and end != -1 and end > start:
@@ -50,6 +53,7 @@ class CodingPlanner:
     """把用户请求整理成 Coding 计划。"""
 
     def __init__(self):
+        # 如果有 API Key 且依赖可用，就优先使用在线模型。
         self.api_enabled = bool(OPENAI_API_KEY and ChatOpenAI is not None)
         self.llm = None
         if self.api_enabled:
@@ -61,11 +65,13 @@ class CodingPlanner:
                     temperature=TEMPERATURE,
                 )
             except Exception:
+                # 初始化失败时切回本地规则模式。
                 self.api_enabled = False
                 self.llm = None
 
     def _local_plan(self, request: str, workspace_summary: dict, focus_files: Iterable[str] | None = None) -> dict:
         """本地兜底计划。"""
+        # 本地模式不会调用模型，而是根据关键词生成保守计划。
         lower = request.lower()
         steps = []
 
@@ -109,6 +115,7 @@ class CodingPlanner:
         }
 
     def _build_prompt(self, request: str, workspace_summary: dict, focus_files: Iterable[str] | None = None) -> str:
+        """构建给在线模型的计划生成提示词。"""
         files_text = "\n".join(f"- {item}" for item in (focus_files or [])) or "- 无"
         return (
             "你是一个专业的 Coding Agent 规划器。请根据用户请求和工作区信息，输出严格 JSON。\n"
@@ -129,6 +136,7 @@ class CodingPlanner:
             return self._local_plan(request, workspace_summary, focus_files)
 
         try:
+            # 在线模式：让模型输出严格 JSON，再解析成 dict。
             response = self.llm.invoke([HumanMessage(content=self._build_prompt(request, workspace_summary, focus_files))])
             raw_text = getattr(response, "content", str(response))
             data = _extract_json(raw_text)
@@ -137,5 +145,5 @@ class CodingPlanner:
             data.setdefault("workspace_summary", workspace_summary)
             return data
         except Exception:
+            # 在线失败时自动回退本地计划，保证演示不中断。
             return self._local_plan(request, workspace_summary, focus_files)
-

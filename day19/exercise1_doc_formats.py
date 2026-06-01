@@ -1,5 +1,5 @@
 """
-Day 12 - 练习 1（基础）：加载不同格式的文档
+Day 19 - 练习 1（基础）：加载不同格式的文档
 
 任务：尝试加载不同格式的文档，对比 Document 对象的结构。
 
@@ -19,7 +19,7 @@ from rich.table import Table
 console = Console()
 
 console.print("=" * 60, style="bold blue")
-console.print("Day 12 - 练习 1：加载不同格式的文档", style="bold blue")
+console.print("Day 19 - 练习 1：加载不同格式的文档", style="bold blue")
 console.print("=" * 60, style="bold blue")
 
 # [新增] 1. 手动创建 Document

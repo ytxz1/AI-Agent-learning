@@ -1,5 +1,5 @@
 """
-Day 12 - 练习 2（中等）：对比不同分割参数的效果
+Day 19 - 练习 2（中等）：对比不同分割参数的效果
 
 任务：对比不同 chunk_size 和 chunk_overlap 的分割效果。
 
@@ -20,7 +20,7 @@ from rich.table import Table
 console = Console()
 
 console.print("=" * 60, style="bold blue")
-console.print("Day 12 - 练习 2：对比不同分割参数", style="bold blue")
+console.print("Day 19 - 练习 2：对比不同分割参数", style="bold blue")
 console.print("=" * 60, style="bold blue")
 
 # 加载文档

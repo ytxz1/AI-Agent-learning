@@ -1,5 +1,5 @@
 """
-Day 12 - 检索器：从向量数据库中查找相关文档
+Day 19 - 项目 2：RAG 问答系统 - 检索器
 
 本示例演示检索器的使用和高级检索策略：
 1. 基本检索（similarity_search）
@@ -25,7 +25,7 @@ from rich.table import Table
 console = Console()
 
 console.print("=" * 60, style="bold blue")
-console.print("Day 12 - 检索器", style="bold blue")
+console.print("Day 19 - 检索器", style="bold blue")
 console.print("=" * 60, style="bold blue")
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
