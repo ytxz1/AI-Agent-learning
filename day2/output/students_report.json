@@ -1,0 +1,75 @@
+{
+  "student_count": 3,
+  "all_tags": [
+    "agent",
+    "ai",
+    "beginner",
+    "fastapi",
+    "practice",
+    "python",
+    "tools",
+    "web"
+  ],
+  "groups": {
+    "良好": [
+      "小明",
+      "小红"
+    ],
+    "需加强": [
+      "小李"
+    ]
+  },
+  "students": [
+    {
+      "id": 2,
+      "name": "小红",
+      "age": 19,
+      "scores": {
+        "python": 88,
+        "math": 91,
+        "english": 85
+      },
+      "tags": [
+        "python",
+        "web",
+        "fastapi"
+      ],
+      "average": 88.0,
+      "level": "良好"
+    },
+    {
+      "id": 1,
+      "name": "小明",
+      "age": 18,
+      "scores": {
+        "python": 92,
+        "math": 86,
+        "english": 78
+      },
+      "tags": [
+        "python",
+        "ai",
+        "beginner"
+      ],
+      "average": 85.33,
+      "level": "良好"
+    },
+    {
+      "id": 3,
+      "name": "小李",
+      "age": 20,
+      "scores": {
+        "python": 67,
+        "math": 72,
+        "english": 70
+      },
+      "tags": [
+        "agent",
+        "tools",
+        "practice"
+      ],
+      "average": 69.67,
+      "level": "需加强"
+    }
+  ]
+}

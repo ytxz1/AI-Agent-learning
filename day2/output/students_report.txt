@@ -1,0 +1,8 @@
+Day 2 学生成绩报告
+学生数量：3
+所有标签：agent, ai, beginner, fastapi, practice, python, tools, web
+
+学生排行：
+- 小红：平均分 88.0，等级 良好
+- 小明：平均分 85.33，等级 良好
+- 小李：平均分 69.67，等级 需加强

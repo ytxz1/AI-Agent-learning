@@ -1,0 +1,35 @@
+[
+  {
+    "id": 1,
+    "name": "小明",
+    "age": 18,
+    "scores": {
+      "python": 92,
+      "math": 86,
+      "english": 78
+    },
+    "tags": ["python", "ai", "beginner"]
+  },
+  {
+    "id": 2,
+    "name": "小红",
+    "age": 19,
+    "scores": {
+      "python": 88,
+      "math": 91,
+      "english": 85
+    },
+    "tags": ["python", "web", "fastapi"]
+  },
+  {
+    "id": 3,
+    "name": "小李",
+    "age": 20,
+    "scores": {
+      "python": 67,
+      "math": 72,
+      "english": 70
+    },
+    "tags": ["agent", "tools", "practice"]
+  }
+]

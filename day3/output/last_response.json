@@ -1,0 +1,22 @@
+{
+  "id": "chatcmpl-mock-4476fc44",
+  "object": "chat.completion",
+  "created": 1780284789,
+  "model": "gpt-4o-mini",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "这是本地模拟回复。\n我收到的问题是：请用三句话解释什么是 API。\n真实 API 调用时，choices[0].message.content 会放模型回答。"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0
+  },
+  "mock": true
+}

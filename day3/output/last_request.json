@@ -1,0 +1,14 @@
+{
+  "model": "gpt-4o-mini",
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是一个耐心的 Python 和 API 入门老师。"
+    },
+    {
+      "role": "user",
+      "content": "请用三句话解释什么是 API。"
+    }
+  ],
+  "temperature": 0.2
+}
