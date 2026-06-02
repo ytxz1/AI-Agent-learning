@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "name": "Python 基础复习卡片",
+    "description": "整理变量、函数、列表、字典等 Python 基础知识。",
+    "price": 19.9,
+    "tags": ["python", "基础", "学习资料"],
+    "is_active": true
+  },
+  {
+    "id": 2,
+    "name": "AI Agent 工具调用笔记",
+    "description": "记录 Function Calling、Tools、Agent 执行流程。",
+    "price": 39.9,
+    "tags": ["agent", "tools", "function-calling"],
+    "is_active": true
+  },
+  {
+    "id": 3,
+    "name": "RAG 检索增强生成流程图",
+    "description": "用图解方式说明加载、切分、向量化、检索、生成的流程。",
+    "price": 29.9,
+    "tags": ["rag", "embedding", "retriever"],
+    "is_active": true
+  }
+]

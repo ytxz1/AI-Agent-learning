@@ -1,0 +1,50 @@
+{
+  "project_name": "AI Agent 实习学习项目",
+  "role": "独立开发 / 学习实践",
+  "duration": "1 个月",
+  "background": "为了系统学习 AI Agent 工程化能力，按 30 天计划完成从 Python、API、LangChain、RAG、FastAPI、Docker 到 Streamlit 前端的连续实践。",
+  "features": [
+    "使用 FastAPI 将 Agent 能力封装成可调用 API",
+    "实现普通问答接口、流式响应接口和统一错误处理",
+    "使用本地 fallback 方案降低 API Key 和网络依赖",
+    "使用 Dockerfile 和 docker-compose 准备部署配置",
+    "使用 Streamlit 构建可交互聊天前端",
+    "编写详细 README、练习题、答案和运行说明"
+  ],
+  "tech_stack": [
+    "Python",
+    "FastAPI",
+    "Pydantic",
+    "Streamlit",
+    "Docker",
+    "LangChain",
+    "RAG",
+    "OpenAI API",
+    "GitHub"
+  ],
+  "highlights": [
+    "完成从脚本、API、部署到前端页面的完整项目链路",
+    "所有模块保留本地可运行方案，降低环境依赖",
+    "通过详细中文注释和 README 提升项目可读性",
+    "将学习成果整理为 GitHub 展示型项目"
+  ],
+  "challenges": [
+    {
+      "problem": "不同文件直接运行时容易出现相对导入报错",
+      "solution": "在模块中加入项目根目录 sys.path 兼容处理，并保留相对导入和直接运行两种方式"
+    },
+    {
+      "problem": "没有 API Key 或在线模型异常时项目无法演示",
+      "solution": "设计 local fallback，保证 API、前端和演示脚本都可以独立运行"
+    },
+    {
+      "problem": "项目内容多，初学者阅读成本高",
+      "solution": "为每个 day 编写详细 README、中文注释、练习题和答案"
+    }
+  ],
+  "results": [
+    "完成多个可运行的 FastAPI / Streamlit / Docker 示例项目",
+    "形成系统化 AI Agent 学习作品集",
+    "具备将 AI 能力接口化和展示化的基础工程能力"
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "project_name": "AI Agent 实习学习项目",
+  "target_path": "D:\\vscode项目\\学习\\day25",
+  "score": 92,
+  "checks": [
+    {
+      "title": "检查 README.md",
+      "passed": true,
+      "detail": "README.md 存在。",
+      "suggestion": "README 是 GitHub 项目的门面。"
+    },
+    {
+      "title": "检查 requirements.txt",
+      "passed": true,
+      "detail": "requirements.txt 存在。",
+      "suggestion": "requirements.txt 说明项目依赖。"
+    },
+    {
+      "title": "检查主入口 main.py / app.py",
+      "passed": true,
+      "detail": "已找到：app.py",
+      "suggestion": "项目应该有清晰的主入口。"
+    },
+    {
+      "title": "检查 modules",
+      "passed": true,
+      "detail": "modules 存在。",
+      "suggestion": "modules 文件夹能让代码结构更清楚。"
+    },
+    {
+      "title": "是否准备截图或资源目录",
+      "passed": true,
+      "detail": "已找到 assets 目录。",
+      "suggestion": "建议准备 screenshots 或 assets 目录，用来存放运行截图、架构图或 GIF。"
+    },
+    {
+      "title": "是否准备项目文档目录",
+      "passed": false,
+      "detail": "还没有 docs 目录。",
+      "suggestion": "建议准备 docs 目录，放接口说明、部署说明、学习总结等文档。"
+    },
+    {
+      "title": "README 长度是否足够",
+      "passed": true,
+      "detail": "README 当前长度约 6423 个字符。",
+      "suggestion": "GitHub 展示型 README 建议写详细一些，至少包含项目介绍、运行方式、截图和亮点。"
+    },
+    {
+      "title": "README 是否包含：项目",
+      "passed": true,
+      "detail": "已找到关键词：项目",
+      "suggestion": "建议 README 说明项目是什么。"
+    },
+    {
+      "title": "README 是否包含：安装",
+      "passed": true,
+      "detail": "已找到关键词：安装",
+      "suggestion": "建议说明如何安装依赖。"
+    },
+    {
+      "title": "README 是否包含：运行",
+      "passed": true,
+      "detail": "已找到关键词：运行",
+      "suggestion": "建议说明如何启动项目。"
+    },
+    {
+      "title": "README 是否包含：结构",
+      "passed": true,
+      "detail": "已找到关键词：结构",
+      "suggestion": "建议展示项目目录结构。"
+    },
+    {
+      "title": "README 是否包含：练习",
+      "passed": true,
+      "detail": "已找到关键词：练习",
+      "suggestion": "学习型项目建议保留练习题和答案说明。"
+    },
+    {
+      "title": "README 是否包含：常见错误",
+      "passed": true,
+      "detail": "已找到关键词：常见错误",
+      "suggestion": "建议列出初学者容易遇到的问题。"
+    }
+  ],
+  "highlights": [
+    "项目按 day 组织，学习路径清楚。",
+    "包含 FastAPI、Agent API、Docker、Streamlit 前端等完整链路。",
+    "README 和代码注释适合初学者复盘。",
+    "本地 fallback 设计降低了 API Key 和网络依赖。"
+  ],
+  "next_actions": [
+    "建议准备 docs 目录，放接口说明、部署说明、学习总结等文档。",
+    "给 README 添加项目运行截图。",
+    "在 GitHub 仓库首页添加 Topics：python、fastapi、agent、rag、streamlit。",
+    "补充一段 30 秒演示 GIF，展示从提问到回答的流程。"
+  ]
+}
