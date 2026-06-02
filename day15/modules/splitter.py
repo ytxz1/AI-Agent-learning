@@ -9,7 +9,13 @@ from __future__ import annotations
 
 from typing import Iterable, List
 
-from .loader import DocumentItem
+# 兼容两种运行方式：
+# 1. 作为包导入：from modules.splitter import split_documents
+# 2. 直接运行：python day15/modules/splitter.py
+try:
+    from .loader import DocumentItem
+except ImportError:
+    from loader import DocumentItem
 
 
 def split_text(text: str, chunk_size: int = 220, chunk_overlap: int = 50) -> List[str]:
@@ -74,4 +80,3 @@ def split_documents(documents: Iterable[DocumentItem], chunk_size: int = 220, ch
             metadata["chunk_index"] = idx
             chunks.append(DocumentItem(page_content=chunk, metadata=metadata))
     return chunks
-

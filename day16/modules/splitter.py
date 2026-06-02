@@ -8,7 +8,13 @@ from __future__ import annotations
 
 from typing import Iterable, List
 
-from .loader import DocumentItem
+# 兼容两种运行方式：
+# 1. 作为包导入：from modules.splitter import split_documents
+# 2. 直接运行：python day16/modules/splitter.py
+try:
+    from .loader import DocumentItem
+except ImportError:
+    from loader import DocumentItem
 
 
 def split_text(text: str, chunk_size: int = 240, chunk_overlap: int = 60) -> List[str]:

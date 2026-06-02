@@ -9,7 +9,15 @@ from __future__ import annotations
 
 from typing import List
 
-from .vector_store import SearchResult, SimpleVectorStore
+# 兼容两种运行方式：
+# 1. 从 day15/05_retriever.py 导入：from modules.retriever import Retriever
+#    这时 retriever.py 属于 modules 包，必须使用相对导入 .vector_store。
+# 2. 直接运行 day15/modules/retriever.py
+#    这时它没有包身份，相对导入会失败，所以退回普通导入 vector_store。
+try:
+    from .vector_store import SearchResult, SimpleVectorStore
+except ImportError:
+    from vector_store import SearchResult, SimpleVectorStore
 
 
 class Retriever:
@@ -26,4 +34,3 @@ class Retriever:
         """根据问题返回 Top-K 检索结果。"""
 
         return self.vector_store.similarity_search(question, k=self.top_k)
-

@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 from typing import Optional
+
+# 兼容直接运行 day16/modules/search_demo.py。
+DAY16_DIR = Path(__file__).resolve().parent.parent
+if str(DAY16_DIR) not in sys.path:
+    sys.path.insert(0, str(DAY16_DIR))
 
 from config import TOP_K
 

@@ -9,7 +9,16 @@ from __future__ import annotations
 import hashlib
 import math
 import re
+import sys
+from pathlib import Path
 from typing import List
+
+# 兼容直接运行 day15/modules/embeddings.py 的情况。
+# 直接运行时，Python 默认只认识 modules 目录，不认识上一层 day15/config.py。
+# 所以这里把 day15 根目录加入 sys.path。
+DAY15_DIR = Path(__file__).resolve().parent.parent
+if str(DAY15_DIR) not in sys.path:
+    sys.path.insert(0, str(DAY15_DIR))
 
 from config import OPENAI_API_KEY, OPENAI_BASE_URL, EMBEDDING_MODEL
 
@@ -59,24 +68,79 @@ class SimpleEmbeddingModel:
         return [self.embed_query(text) for text in texts]
 
 
+class HybridEmbeddingModel:
+    """在线优先、本地兜底的 Embedding 模型。
+
+    为什么需要这个类：
+    `OpenAIEmbeddings(...)` 初始化成功，不代表后面的 API 请求一定成功。
+    例如 base_url 不匹配、模型名不支持、网络异常，都可能在 embed_documents() 时才报错。
+    所以这里把每一次在线调用都包起来，失败就自动切换成本地 SimpleEmbeddingModel。
+    """
+
+    def __init__(self):
+        # 本地模型始终可用。
+        self.local_model = SimpleEmbeddingModel()
+
+        # 在线模型默认不可用，只有 API Key 和依赖都正常时才启用。
+        self.online_model = None
+        self.api_enabled = False
+
+        if OPENAI_API_KEY:
+            try:
+                from langchain_openai import OpenAIEmbeddings
+
+                self.online_model = OpenAIEmbeddings(
+                    model=EMBEDDING_MODEL,
+                    openai_api_key=OPENAI_API_KEY,
+                    openai_api_base=OPENAI_BASE_URL,
+                )
+                self.api_enabled = True
+            except Exception:
+                self.online_model = None
+                self.api_enabled = False
+
+    @property
+    def mode(self) -> str:
+        """返回当前 Embedding 模式，方便调试。"""
+
+        return "在线 API" if self.api_enabled else "本地兜底"
+
+    def _disable_online(self):
+        """关闭在线模式，后续都使用本地兜底。"""
+
+        self.online_model = None
+        self.api_enabled = False
+
+    def embed_query(self, text: str) -> List[float]:
+        """把单个查询文本转成向量。"""
+
+        if self.online_model is not None:
+            try:
+                return list(self.online_model.embed_query(text))
+            except Exception:
+                self._disable_online()
+        return self.local_model.embed_query(text)
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """批量把文档文本转成向量。"""
+
+        if self.online_model is not None:
+            try:
+                vectors = self.online_model.embed_documents(texts)
+                return [list(vector) for vector in vectors]
+            except Exception:
+                self._disable_online()
+        return self.local_model.embed_documents(texts)
+
+
 def get_embedding_model():
     """获取 Embedding 模型。
 
-    如果配置了 OPENAI_API_KEY，就优先尝试使用真实 Embedding API。
-    如果没有配置或者依赖不可用，就使用本地 SimpleEmbeddingModel。
+    返回 HybridEmbeddingModel：
+    - 有 API Key 时优先使用在线 Embedding。
+    - 在线调用失败时自动回退本地 Embedding。
+    - 没有 API Key 时直接使用本地 Embedding。
     """
 
-    if OPENAI_API_KEY:
-        try:
-            from langchain_openai import OpenAIEmbeddings
-
-            return OpenAIEmbeddings(
-                model=EMBEDDING_MODEL,
-                openai_api_key=OPENAI_API_KEY,
-                openai_api_base=OPENAI_BASE_URL,
-            )
-        except Exception:
-            # API 依赖安装失败、模型名错误、网络异常等情况都不影响本地演示。
-            pass
-    return SimpleEmbeddingModel()
+    return HybridEmbeddingModel()
 

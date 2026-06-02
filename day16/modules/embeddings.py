@@ -12,7 +12,15 @@ from __future__ import annotations
 import hashlib
 import math
 import re
+import sys
+from pathlib import Path
 from typing import List
+
+# 兼容直接运行 day16/modules/embeddings.py。
+# 直接运行模块文件时，Python 默认只认识 modules 目录，不认识上一层 day16/config.py。
+DAY16_DIR = Path(__file__).resolve().parent.parent
+if str(DAY16_DIR) not in sys.path:
+    sys.path.insert(0, str(DAY16_DIR))
 
 from config import EMBEDDING_DIM, EMBEDDING_MODEL, OPENAI_API_KEY, OPENAI_BASE_URL
 

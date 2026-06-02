@@ -16,7 +16,13 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from .loader import DocumentItem
+# 兼容两种运行方式：
+# 1. 作为包导入：from modules.vector_store import PersistentVectorStore
+# 2. 直接运行：python day16/modules/vector_store.py
+try:
+    from .loader import DocumentItem
+except ImportError:
+    from loader import DocumentItem
 
 
 def _cosine_similarity(a: List[float], b: List[float]) -> float:
