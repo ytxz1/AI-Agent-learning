@@ -1,0 +1,11 @@
+[
+  {
+    "company": "示例 AI 应用公司 A",
+    "role": "AI Agent 实习生",
+    "date": "2026-06-03",
+    "channel": "Boss 直聘",
+    "status": "已投递",
+    "next_action": "等待回复，2 天后跟进",
+    "note": "投递时重点突出 FastAPI Agent API 和 Streamlit 前端项目。"
+  }
+]

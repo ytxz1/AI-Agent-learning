@@ -1,0 +1,29 @@
+[
+  {
+    "company": "示例 AI 应用公司 A",
+    "role": "AI Agent 实习生",
+    "city": "北京/远程",
+    "source": "Boss 直聘",
+    "jd_keywords": ["Python", "FastAPI", "LLM", "RAG", "Agent"],
+    "match_reason": "岗位要求与 FastAPI、RAG、Agent 项目经验匹配。",
+    "priority": "high"
+  },
+  {
+    "company": "示例互联网公司 B",
+    "role": "大模型应用开发实习生",
+    "city": "上海",
+    "source": "拉勾",
+    "jd_keywords": ["Python", "OpenAI API", "LangChain", "Docker"],
+    "match_reason": "项目中包含 OpenAI API、LangChain、Docker 部署实践。",
+    "priority": "high"
+  },
+  {
+    "company": "示例创业公司 C",
+    "role": "AI 产品开发实习生",
+    "city": "深圳",
+    "source": "实习僧",
+    "jd_keywords": ["Streamlit", "FastAPI", "Prompt", "GitHub"],
+    "match_reason": "前端演示、API 封装和 GitHub 项目展示能力匹配。",
+    "priority": "medium"
+  }
+]

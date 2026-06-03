@@ -1,0 +1,19 @@
+[
+  {
+    "company": "示例 AI 应用公司 A",
+    "role": "AI Agent 实习生",
+    "interview_date": "2026-06-05",
+    "questions": [
+      "请介绍一下你的 AI Agent 项目。",
+      "为什么要用 FastAPI 做接口化？",
+      "没有 API Key 时你怎么保证项目可演示？"
+    ],
+    "good_points": [
+      "能讲清楚项目从脚本到 API 再到前端的完整链路。"
+    ],
+    "to_improve": [
+      "回答 RAG 细节时可以更具体，例如向量库和检索流程。"
+    ],
+    "result": "待反馈"
+  }
+]

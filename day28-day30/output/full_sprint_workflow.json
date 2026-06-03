@@ -1,0 +1,68 @@
+{
+  "ranked_jobs": [
+    {
+      "company": "示例 AI 应用公司 A",
+      "role": "AI Agent 实习生",
+      "score": 100,
+      "matched_keywords": [
+        "Python",
+        "FastAPI",
+        "LLM",
+        "RAG",
+        "Agent"
+      ],
+      "missing_keywords": [],
+      "priority": "high",
+      "suggestion": "高度匹配，优先投递，并在沟通中突出项目经历。"
+    },
+    {
+      "company": "示例互联网公司 B",
+      "role": "大模型应用开发实习生",
+      "score": 100,
+      "matched_keywords": [
+        "Python",
+        "OpenAI API",
+        "LangChain",
+        "Docker"
+      ],
+      "missing_keywords": [],
+      "priority": "high",
+      "suggestion": "高度匹配，优先投递，并在沟通中突出项目经历。"
+    },
+    {
+      "company": "示例创业公司 C",
+      "role": "AI 产品开发实习生",
+      "score": 100,
+      "matched_keywords": [
+        "Streamlit",
+        "FastAPI",
+        "Prompt",
+        "GitHub"
+      ],
+      "missing_keywords": [],
+      "priority": "medium",
+      "suggestion": "高度匹配，优先投递，并在沟通中突出项目经历。"
+    }
+  ],
+  "application_summary": {
+    "total": 1,
+    "weekly_goal": 15,
+    "progress_percent": 7,
+    "status_counter": {
+      "已投递": 1
+    },
+    "channel_counter": {
+      "Boss 直聘": 1
+    },
+    "next_actions": [
+      "等待回复，2 天后跟进"
+    ]
+  },
+  "interview_plan": [
+    "准备 1 分钟项目介绍。",
+    "准备 3 个项目难点和解决方案。",
+    "准备 FastAPI、RAG、Docker、Streamlit 的项目场景表达。",
+    "检查 GitHub 仓库 README、截图和运行命令。",
+    "准备向面试官提问的 2 个问题。"
+  ]
+}
